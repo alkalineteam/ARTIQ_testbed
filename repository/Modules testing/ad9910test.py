@@ -21,11 +21,17 @@ class TestAD9910(EnvExperiment):
         
         self.ad9910_0.set_att(0.0)
 
-        for i in range(int64(self.Number_of_pulse)):
-            self.ad9910_0.set(frequency=30 * MHz, amplitude=1.0)
-            delay(self.Pulse_width*ms)
-            self.ad9910_0.set(frequency=90 * MHz, amplitude=1.0)
-            delay(self.Pulse_width*ms)
+
+        ''' Switch between frequencies'''
+        # for i in range(int64(self.Number_of_pulse)):
+        #     self.ad9910_0.set(frequency=30 * MHz, amplitude=1.0)
+        #     delay(self.Pulse_width*ms)
+        #     self.ad9910_0.set(frequency=90 * MHz, amplitude=1.0)
+        #     delay(self.Pulse_width*ms)
+
+
+        '''Single Frequency Output'''
+        self.ad9910_0.set(frequency=80*MHz, amplitude=1.0)
 
         # self.ad9910_0.cfg_sw(True)
 
@@ -33,6 +39,6 @@ class TestAD9910(EnvExperiment):
 
         # self.ad9910_0.cfg_sw(False)
 
-        self.ad9910_0.sw.off()
+        # self.ad9910_0.sw.off()
 
         print("AD9910 test is done")
