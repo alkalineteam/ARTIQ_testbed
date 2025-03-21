@@ -6,4 +6,4 @@ class TestCore(EnvExperiment):
 
 	@kernel
 	def run(self):
-		print("Hello testbed")
+		print("Hello testbed setup")
