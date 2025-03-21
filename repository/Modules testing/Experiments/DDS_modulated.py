@@ -7,7 +7,7 @@ class DDS_Modulated(EnvExperiment):
     def build(self):
         self.setattr_device("core")
         self.setattr_device("urukul0_ch0")
-        self.setattr_device("cpld0")
+        self.cpld0 = self.setattr_device("urukul0_cpld")
         self.dds = self.urukul0_ch0
     
     def prepare(self):
@@ -20,6 +20,7 @@ class DDS_Modulated(EnvExperiment):
         #initializes the DDS and CPLD CFG RF switch state, sets attenuation
         self.core.break_realtime()
         dds.init()
+        # dds.cpld0.init()
         dds.sw.on()
         dds.set_att(6.*dB)
         dds.cfg_sw(True)
@@ -57,7 +58,7 @@ class DDS_Modulated(EnvExperiment):
     def run(self):
         self.core.reset()
         self.core.break_realtime()
-        self.cpld0.init()
+        self.dds.cpld.init()
         self.init_dds(self.urukul0_ch0) 
         self.configure_ram_mode(self.urukul0_ch0)
 
