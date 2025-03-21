@@ -11,9 +11,9 @@ class DDS_freq_ramp(EnvExperiment):
  
 	def build(self):
 		self.setattr_device("core")
-		self.setattr_device("urukul1_cpld") #2nd Urukul module
-		self.setattr_device("urukul1_ch3") #Urukul module
-		self.u = self.urukul1_ch3
+		# self.setattr_device("urukul1_cpld") #2nd Urukul module
+		self.setattr_device("urukul0_ch0") #Urukul module
+		self.u = self.urukul0_ch0
  
 	def prepare(self):
  
