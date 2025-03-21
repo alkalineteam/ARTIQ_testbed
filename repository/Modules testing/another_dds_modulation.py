@@ -47,8 +47,10 @@ class DDS_freq_ramp(EnvExperiment):
 		self.ad9910_0.cpld.io_update.pulse(100*ns)
 		self.core.break_realtime()
 		self.ad9910_0.set_att(0.0*dB)
-		self.ad9910_0.set(frequency=0.0*MHz, amplitude=1.0)
- 
+		self.ad9910_0.cpld.set_profile(1)
+		self.ad9910_0.set(frequency=80.0*MHz, amplitude=1.0, profile=1)
+		self.ad9910_0.cpld.io_update.pulse_mu(8)
+
 		'''prepare RAM profile:'''
 		self.ad9910_0.set_cfr1() #disable RAM for writing data
 		self.ad9910_0.cpld.io_update.pulse_mu(8) #I/O pulse to enact RAM change
@@ -63,21 +65,18 @@ class DDS_freq_ramp(EnvExperiment):
  
 		'''enable RAM mode (enacted by IO pulse) and fix other parameters:'''
 		self.ad9910_0.set_cfr1(internal_profile=0, ram_destination=ad9910.RAM_DEST_FTW, ram_enable=1)
-		# self.ad9910_0.set_amplitude(1.0)
+		self.ad9910_0.set_amplitude(1.0)
 		# self.ad9910_0.set_att(0.0*dB)
+		# self.ad9910_0.set_frequency(80*MHz)
 		self.ad9910_0.cpld.io_update.pulse_mu(8)
  
 		'''switch on DDS channel'''
 		self.ad9910_0.sw.on()	
 
 		delay(5000 * ms)
+
+		'''switch on single-tone mode'''
 		
-		self.ad9910_0.cpld.io_update.pulse_mu(8)
-		self.ad9910_0.set_cfr1(ram_enable=0)
-		# self.ad9910_0.cpld.io_update.pulse_mu(8)
-
-		self.ad9910_0.set(frequency=80*MHz, amplitude=1.0)
-
-		# self.ad9910_0.sw.off()
+		self.ad9910_0.set(frequency=80*MHz,amplitude=1.0, profile=0)
 
 		print("Testing done!")

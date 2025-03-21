@@ -21,22 +21,22 @@ class AD9910_mod(EnvExperiment):
         
         self.ad9910_0.set_att(0.0)
 
-        # for i in range(int64(self.Cycles)):
-        start_freq = 80.0 * MHz
-        end_freq = 85.0 * MHz
-        steps = (end_freq - start_freq) / 5
-        freq = start_freq
+        # # for i in range(int64(self.Cycles)):
+        # start_freq = 80.0 * MHz
+        # end_freq = 85.0 * MHz
+        # steps = (end_freq - start_freq) / 5
+        # freq = start_freq
 
-        for i in range(int64(10)):
-            for i in range (int64(5)):                
-                self.ad9910_0.set(frequency = freq * MHz, amplitude = 1.0)
-                delay(steps * ms)
-                print(freq)
-                freq += steps
+        # for i in range(int64(10)):
+        #     for i in range (int64(5)):                
+        #         self.ad9910_0.set(frequency = freq * MHz, amplitude = 1.0)
+        #         delay(steps * ms)
+        #         print(freq)
+        #         freq += steps
 
 
 
-        # self.ad9910_0.sw.off()
+        # # self.ad9910_0.sw.off()
 
         self.ad9910_0.set(frequency = 80 * MHz, amplitude = 1.0)
 
