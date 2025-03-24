@@ -10,7 +10,7 @@ end_freq = 81.0*MHz
 
 N = int64((end_freq - start_freq) / Frequency_Modulation)
 #T = 64000100
-T = int(1e12)
+T = 20
  
 class AD9910_RAM(EnvExperiment):
  
@@ -20,7 +20,7 @@ class AD9910_RAM(EnvExperiment):
 		self.setattr_device("urukul0_ch0") #Urukul module
 		self.ad9910_0 = self.urukul0_ch0
 
-		self.ad9910_1 = self.setattr_device("urukul0_ch1")
+		#self.ad9910_1 = self.setattr_device("urukul0_ch1")
  
 	def prepare(self):
  
@@ -88,7 +88,7 @@ class AD9910_RAM(EnvExperiment):
 
 		'''switch on single-tone mode'''
 		
-		self.ad9910_0.set(frequency=80*MHz,amplitude=1.0, profile=0)
+		self.ad9910_0.cpld.set_profile(1)
 
 		
 
