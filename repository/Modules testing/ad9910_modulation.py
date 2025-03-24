@@ -50,7 +50,7 @@ class AD9910_RAM(EnvExperiment):
 		self.core.break_realtime()
 		self.ad9910_0.set_att(0.0*dB)
 		self.ad9910_0.cpld.set_profile(1)		
-		self.ad9910_0.set(frequency=80.92*MHz, amplitude=1.0, profile=1)
+		self.ad9910_0.set(frequency=80.92*MHz, amplitude=0.05, profile=1)
 		self.ad9910_0.cpld.io_update.pulse_mu(8)
 
 		'''prepare RAM profile:'''
@@ -66,8 +66,8 @@ class AD9910_RAM(EnvExperiment):
 		delay(100*us)
  
 		'''enable RAM mode (enacted by IO pulse) and fix other parameters:'''
-		self.ad9910_0.set_cfr1(internal_profile=0, ram_destination=ad9910.RAM_DEST_FTW, ram_enable=1,manual_osk_external=0,osk_enable=1,select_auto_osk=0)
-		self.ad9910_0.set_amplitude(1.0)
+		self.ad9910_0.set_cfr1(internal_profile=0, ram_destination=ad9910.RAM_DEST_FTW, ram_enable=1 ,manual_osk_external=0,osk_enable=1,select_auto_osk=0)
+		self.ad9910_0.set_amplitude(0.05)
 		self.ad9910_0.cpld.io_update.pulse_mu(8)
  
 		'''switch on DDS channel'''
@@ -86,7 +86,7 @@ class AD9910_RAM(EnvExperiment):
 		self.ad9910_0.cpld.io_update.pulse_mu(8)
 		
 		# Check profile of channel
-		print(self.ad9910_0.get(profile=1))
+		# print(self.ad9910_0.get(profile=1))
 		
 
 		print("Testing done!")
