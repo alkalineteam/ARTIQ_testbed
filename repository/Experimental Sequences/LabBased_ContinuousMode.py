@@ -9,28 +9,28 @@ class Everything_ON(EnvExperiment):
         self.core:Core
 
         #TTLs
-        self.blue_mot_shutter:TTLOut=self.get_device("ttl0")
-        self.repump_shutter:TTLOut=self.get_device("ttl1")
-        self.red_mot_shutter:TTLOut=self.get_device("ttl2")
-        self.zeeman_slower_shutter:TTLOut=self.get_device("ttl3")
-        self.probe_shutter:TTLOut=self.get_device("ttl4")
-        self.clock_shutter:TTLOut=self.get_device("ttl5")
-        self.pmt_shutter:TTLOut=self.get_device("ttl6")
-        self.camera_trigger:TTLOut=self.get_device("ttl7")
-        self.camera_shutter:TTLOut=self.get_device("ttl7")        
+        self.blue_mot_shutter:TTLOut=self.get_device("ttl4")
+        self.repump_shutter:TTLOut=self.get_device("ttl5")
+        self.red_mot_shutter:TTLOut=self.get_device("ttl6")
+        self.zeeman_slower_shutter:TTLOut=self.get_device("ttl7")
+        self.probe_shutter:TTLOut=self.get_device("ttl8")
+        self.clock_shutter:TTLOut=self.get_device("ttl9")
+        self.pmt_shutter:TTLOut=self.get_device("ttl10")
+        self.camera_trigger:TTLOut=self.get_device("ttl11")
+        # self.camera_shutter:TTLOut=self.get_device("ttl12")        
         #AD9910
-        self.blue_mot_aom = self.get_device("urukul0_ch0")
-        self.probe_aom = self.get_device("urukul0_ch1")
+        self.red_mot_aom = self.get_device("urukul0_ch0")
+        self.blue_mot_aom = self.get_device("urukul0_ch1")
         self.zeeman_slower_aom = self.get_device("urukul0_ch2")
-        self.lattice_aom = self.get_device("urukul0_ch2")
+        self.probe_aom = self.get_device("urukul0_ch2")
         #AD9912
-        self.red_mot_aom=self.get_device("urukul1_ch0")
+        self.lattice_aom=self.get_device("urukul1_ch0")
         self.atom_lock_aom=self.get_device("urukul1_ch1")
         self.stepping_aom=self.get_device("urukul1_ch2")
                
                #Zotino
-        self.mot_coil_1=self.get_device("zotino0")
-        self.mot_coil_2=self.get_device("zotino0")
+        # self.mot_coil_1=self.get_device("zotino0")
+        # self.mot_coil_2=self.get_device("zotino0")
                
         
         self.setattr_argument("Sequence", NumberValue(default = 0.0))
@@ -60,8 +60,8 @@ class Everything_ON(EnvExperiment):
         self.core.reset()
         self.core.break_realtime()
 
-        self.mot_coil_1.init()
-        self.mot_coil_2.init()
+        # self.mot_coil_1.init()
+        # self.mot_coil_2.init()
         self.blue_mot_aom.cpld.init()
         self.blue_mot_aom.init()
         self.zeeman_slower_aom.cpld.init()
@@ -70,27 +70,30 @@ class Everything_ON(EnvExperiment):
         self.red_mot_aom.init()
         self.probe_aom.cpld.init()
         self.probe_aom.init()
-        self.clock_aom.cpld.init()
-        self.clock_aom.init()
+        self.atom_lock_aom.cpld.init()
+        self.stepping_aom.init()
 
         self.blue_mot_aom.sw.on()
         self.zeeman_slower_aom.sw.on()
         self.red_mot_aom.sw.on()
         self.probe_aom.sw.on()
-        self.clock_aom.sw.on()
+        self.atom_lock_aom.sw.on()
+        self.stepping_aom.sw.on()
 
         self.blue_mot_aom.set_att(0.0)
         self.zeeman_slower_aom.set_att(0.0)
         self.red_mot_aom.set_att(0.0)
         self.probe_aom.set_att(0.0)
-        self.stepping_aom.set_att(self.Clock_Attenuation)
+        self.stepping_aom.set_att(0.0)
+        self.atom_lock_aom(0.0)
 
-        self.mot_coil_1.write_dac(0, 0.976)    
-        self.mot_coil_2.write_dac(1, 0.53)
+
+        # self.mot_coil_1.write_dac(0, 0.976)    
+        # self.mot_coil_2.write_dac(1, 0.53)
         
         with parallel:
-            self.mot_coil_1.load()
-            self.mot_coil_2.load()
+            # self.mot_coil_1.load()
+            # self.mot_coil_2.load()
             self.repump_shutter.on()
             self.blue_mot_shutter.on()
             self.red_mot_shutter.on()
@@ -108,42 +111,42 @@ class Everything_ON(EnvExperiment):
 
         delay(1000*ms)
 
-        if self.Sequence == 1:
-            for i in range(int64(self.Cycle)):
-                self.mot_coil_1.write_dac(0, 0.976)
-                self.mot_coil_2.write_dac(1, 0.53)
+        # if self.Sequence == 1:
+        #     for i in range(int64(self.Cycle)):
+        #         self.mot_coil_1.write_dac(0, 0.976)
+        #         self.mot_coil_2.write_dac(1, 0.53)
 
-                with parallel:
-                    self.mot_coil_1.load()
-                    self.mot_coil_2.load()
-                    self.zeeman_slower_aom.set(frequency=self.Zeeman_Frequency * MHz, amplitude=self.Zeeman_Amplitude)
-                self.stepping_aom.sw.on()
-                delay(1000*ms)
+        #         with parallel:
+        #             self.mot_coil_1.load()
+        #             self.mot_coil_2.load()
+        #             self.zeeman_slower_aom.set(frequency=self.Zeeman_Frequency * MHz, amplitude=self.Zeeman_Amplitude)
+        #         self.stepping_aom.sw.on()
+        #         delay(1000*ms)
 
-                self.mot_coil_1.write_dac(0, 2.46)
-                self.mot_coil_2.write_dac(1, 2.23)
-                self.zeeman_slower_aom.set(frequency=self.Zeeman_Frequency * MHz, amplitude=0.0)
+        #         self.mot_coil_1.write_dac(0, 2.46)
+        #         self.mot_coil_2.write_dac(1, 2.23)
+        #         self.zeeman_slower_aom.set(frequency=self.Zeeman_Frequency * MHz, amplitude=0.0)
 
-                with parallel:
-                    self.mot_coil_1.load()
-                    self.mot_coil_2.load()
-                self.stepping_aom.off()
-                delay(1000*ms)
+        #         with parallel:
+        #             self.mot_coil_1.load()
+        #             self.mot_coil_2.load()
+        #         self.stepping_aom.off()
+        #         delay(1000*ms)
 
-        if self.Sequence == 2:
-            self.mot_coil_1.write_dac(0, 2.49)
-            self.mot_coil_2.write_dac(1, 2.27)
+        # if self.Sequence == 2:
+        #     self.mot_coil_1.write_dac(0, 2.49)
+        #     self.mot_coil_2.write_dac(1, 2.27)
 
-            with parallel:
-                self.mot_coil_1.load()
-                self.mot_coil_2.load()
+        #     with parallel:
+        #         self.mot_coil_1.load()
+        #         self.mot_coil_2.load()
 
-        if self.Sequence == 3:
-            self.mot_coil_1.write_dac(0, 4.055)
-            self.mot_coil_2.write_dac(1, 4.083)
+        # if self.Sequence == 3:
+        #     self.mot_coil_1.write_dac(0, 4.055)
+        #     self.mot_coil_2.write_dac(1, 4.083)
 
-            with parallel:
-                self.mot_coil_1.load()
-                self.mot_coil_2.load()
+        #     with parallel:
+        #         self.mot_coil_1.load()
+        #         self.mot_coil_2.load()
         
         print("Parameters are set")
