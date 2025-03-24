@@ -9,8 +9,8 @@ start_freq = 80.0*MHz
 end_freq = 81.0*MHz
 
 N = int64((end_freq - start_freq) / Frequency_Modulation)
-# T = int(1e8)
-T = 64000100
+#T = 64000100
+T = int(1e12)
  
 class AD9910_RAM(EnvExperiment):
  
@@ -45,12 +45,12 @@ class AD9910_RAM(EnvExperiment):
 
 		self.core.break_realtime()
 
-		self.ad9910_1.cpld.init()
-		self.ad9910_1.init()
-		self.ad9910_1.sw.on()
+		# self.ad9910_1.cpld.init()
+		# self.ad9910_1.init()
+		# self.ad9910_1.sw.on()
 
-		self.ad9910_1.set_att(0.0)
-		self.ad9910_1.set(frequency=80*MHz, amplitude=1.0)
+		
+		self.ad9910_0.set(frequency=80*MHz, amplitude=1.0)
 		
 		'''initialize DDS channel'''
 		self.ad9910_0.cpld.init()
@@ -75,7 +75,7 @@ class AD9910_RAM(EnvExperiment):
 		delay(100*us)
  
 		'''enable RAM mode (enacted by IO pulse) and fix other parameters:'''
-		self.ad9910_0.set_cfr1(internal_profile=0, ram_destination=ad9910.RAM_DEST_FTW, ram_enable=1)
+		self.ad9910_0.set_cfr1(internal_profile=0, ram_destination=ad9910.RAM_DEST_FTW, ram_enable=1,manual_osk_external=0,osk_enable=1,select_auto_osk=0)
 		self.ad9910_0.set_amplitude(1.0)
 		# self.ad9910_0.set_att(0.0*dB)
 		# self.ad9910_0.set_frequency(80*MHz)
