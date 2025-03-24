@@ -54,6 +54,7 @@ class Everything_ON(EnvExperiment):
 
         self.setattr_argument("Clock_Frequency", NumberValue(default = 85.0))
         self.setattr_argument("Clock_Attenuation", NumberValue(default = 0.0))
+        self.setattr_argument("Switch_off",BooleanValue(default=False))
 
     @kernel
     def run(self):
@@ -85,7 +86,7 @@ class Everything_ON(EnvExperiment):
         self.red_mot_aom.set_att(0.0)
         self.probe_aom.set_att(0.0)
         self.stepping_aom.set_att(0.0)
-        self.atom_lock_aom(0.0)
+        self.atom_lock_aom.set_att(0.0)
 
 
         # self.mot_coil_1.write_dac(0, 0.976)    
@@ -99,13 +100,13 @@ class Everything_ON(EnvExperiment):
             self.red_mot_shutter.on()
             self.zeeman_slower_shutter.on()
 
-        self.blue_mot_aom.set(frequency= self.BMOT_Frequency * MHz, amplitude=self.BMOT_Amplitude)
+        self.blue_mot_aom.set(frequency= self.BMOT_Frequency * MHz, amplitude=1.0)
 
-        self.zeeman_slower_aom.set(frequency=self.Zeeman_Frequency * MHz, amplitude=self.Zeeman_Amplitude)
+        self.zeeman_slower_aom.set(frequency=self.Zeeman_Frequency * MHz, amplitude=1.0)
 
-        self.red_mot_aom.set(frequency=self.RMOT_Frequency * MHz, amplitude=self.RMOT_Amplitude)
+        self.red_mot_aom.set(frequency=self.RMOT_Frequency * MHz, amplitude=1.0)
 
-        self.probe_aom.set(frequency=self.Probe_Frequency * MHz, amplitude=self.Probe_Amplitude)
+        self.probe_aom.set(frequency=self.Probe_Frequency * MHz, amplitude=1.0)
 
         self.stepping_aom.set(frequency=self.Clock_Frequency * MHz)
 
@@ -149,4 +150,13 @@ class Everything_ON(EnvExperiment):
         #         self.mot_coil_1.load()
         #         self.mot_coil_2.load()
         
+
+        if self.Switch_off == True: 
+            self.blue_mot_aom.sw.off()
+            self.zeeman_slower_aom.sw.off()
+            self.red_mot_aom.sw.off()
+            self.probe_aom.sw.off()
+            self.atom_lock_aom.sw.off()
+            self.stepping_aom.sw.off()
+
         print("Parameters are set")
