@@ -59,7 +59,8 @@ class AD9910_RAM(EnvExperiment):
 		self.core.break_realtime()
 		self.ad9910_0.set_att(0.0*dB)
 		self.ad9910_0.cpld.set_profile(1)
-		self.ad9910_0.set(frequency=80.0*MHz, amplitude=1.0, profile=1)
+		
+		self.ad9910_0.set(frequency=84.0*MHz, amplitude=1.0, profile=1)
 		self.ad9910_0.cpld.io_update.pulse_mu(8)
 
 		'''prepare RAM profile:'''
@@ -85,7 +86,10 @@ class AD9910_RAM(EnvExperiment):
 		self.ad9910_0.sw.on()	
 
 		delay(5000 * ms)
-
+		# print(self.ad9910_0.get(profile=1))
+		print("Testing done!")
+		self.ad9910_0.cpld.set_profile(1)
+		self.ad9910_0.cpld.io_update.pulse_mu(8)
 		'''switch on single-tone mode'''
 		
 		self.ad9910_0.cpld.set_profile(1)
