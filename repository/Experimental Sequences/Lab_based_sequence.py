@@ -7,15 +7,17 @@ class Lab_based_Clock_Sequence(EnvExperiment):
         self.setattr_device("core")
         
         #Assign all channels
+              #TTLs
         self.blue_mot_shutter:TTLOut=self.get_device("ttl4")
         self.repump_shutter:TTLOut=self.get_device("ttl5")
-        self.red_mot_shutter:TTLOut=self.get_device("ttl6")
-        self.zeeman_slower_shutter:TTLOut=self.get_device("ttl7")
-        self.probe_shutter:TTLOut=self.get_device("ttl8")
+        self.zeeman_slower_shutter:TTLOut=self.get_device("ttl6")
+        self.probe_shutter:TTLOut=self.get_device("ttl7")
+        self.camera_trigger:TTLOut=self.get_device("ttl8")
         self.clock_shutter:TTLOut=self.get_device("ttl9")
-        self.pmt_shutter:TTLOut=self.get_device("ttl10")
-        self.camera_trigger:TTLOut=self.get_device("tt11")
-        self.camera_shutter:TTLOut=self.get_device("tt12")        
+
+        # self.pmt_shutter:TTLOut=self.get_device("ttl10")
+        # self.camera_trigger:TTLOut=self.get_device("ttl11")
+        # self.camera_shutter:TTLOut=self.get_device("ttl12")        
         #AD9910
         self.red_mot_aom = self.get_device("urukul0_ch0")
         self.blue_mot_aom = self.get_device("urukul0_ch1")
@@ -23,12 +25,13 @@ class Lab_based_Clock_Sequence(EnvExperiment):
         self.probe_aom = self.get_device("urukul0_ch3")
         #AD9912
         self.lattice_aom=self.get_device("urukul1_ch0")
-        self.atom_lock_aom=self.get_device("urukul1_ch1")
-        self.stepping_aom=self.get_device("urukul1_ch2")
+        self.stepping_aom=self.get_device("urukul1_ch1")
+        self.atom_lock_aom=self.get_device("urukul1_ch2")
+               
         
         #Zotino
-        # self.mot_coil_1=self.get_device("zotino0")
-        # self.mot_coil_2=self.get_device("zotino0")
+        self.mot_coil_1=self.get_device("zotino0")
+        self.mot_coil_2=self.get_device("zotino0")
         
              
         self.setattr_argument("cycles", NumberValue(default=1))
@@ -45,17 +48,17 @@ class Lab_based_Clock_Sequence(EnvExperiment):
     def initialise(self):
         
         # Initialize the modules
-        self.camera_shutter.output()
+      #  self.camera_shutter.output()
         self.camera_trigger.output()
         self.blue_mot_shutter.output()
-        self.red_mot_shutter.output()
+      #  self.red_mot_shutter.output()
         self.zeeman_slower_shutter.output()
         self.repump_shutter.output()
         self.probe_shutter.output()
         self.clock_shutter.output()
-        self.pmt_shutter.output()
-        # self.mot_coil_1.init()
-        # self.mot_coil_2.init()
+     #   self.pmt_shutter.output()
+        self.mot_coil_1.init()
+        self.mot_coil_2.init()
         self.blue_mot_aom.cpld.init()
         self.blue_mot_aom.init()
         self.zeeman_slower_aom.cpld.init()
@@ -64,29 +67,81 @@ class Lab_based_Clock_Sequence(EnvExperiment):
         self.probe_aom.init()
         self.red_mot_aom.cpld.init()
         self.red_mot_aom.init()
+        self.lattice_aom.cpld.init()
+        self.lattice_aom.init()
 
         # Set the RF channels ON
         self.blue_mot_aom.sw.on()
         self.zeeman_slower_aom.sw.on()
         self.red_mot_aom.sw.on()
         self.probe_aom.sw.on()
+       # self.lattice_aom.sw.on()
 
         # Set the RF attenuation
         self.blue_mot_aom.set_att(0.0)
         self.zeeman_slower_aom.set_att(0.0)
         self.probe_aom.set_att(0.0)
         self.red_mot_aom.set_att(0.0)
+
+        #Set the profiles for 689 modulation and single frequency
+
+    @kernel
+    def dds_profile_init(self):
+         
+        Frequency_Modulation = 25000	# In Hz
+
+        start_freq = 80.0*MHz
+        end_freq = 81.0*MHz
+        N = 500
+        T = int((1 / (N*Frequency_Modulation)) /4e-9)
+
+        self.f = [0.]*N
+        self.f_ram = [0]*N
+ 
+        f_span = end_freq - start_freq
+        f_step = f_span / N 	
+ 
+        for i in range(N):
+            self.f[i] = start_freq+i*f_step
+		
+        self.red_mot_aom.frequency_to_ram(self.f, self.f_ram)
+
+        self.red_mot_aom.cpld.init()
+        self.red_mot_aom.init()
+        self.red_mot_aom.cpld.io_update.pulse(100*ns)
+        self.core.break_realtime()
+        self.red_mot_aom.set_att(0.0*dB)
+        self.red_mot_aom.cpld.set_profile(1)		
+        self.red_mot_aom.set(frequency=80.92*MHz, amplitude=0.05, profile=1)
+        self.red_mot_aom.cpld.io_update.pulse_mu(8)
+
+        '''prepare RAM profile:'''
+        self.ad9910_0.set_cfr1() #disable RAM for writing data
+        self.ad9910_0.cpld.io_update.pulse_mu(8) #I/O pulse to enact RAM change
+        self.ad9910_0.set_profile_ram(start=0, end=N-1, step=T, profile=0, mode=ad9910.RAM_MODE_CONT_BIDIR_RAMP)
+        self.ad9910_0.cpld.set_profile(0)
+        self.ad9910_0.cpld.io_update.pulse_mu(8)
+ 
+        '''write data to RAM:'''
+        delay(50*us)
+        self.ad9910_0.write_ram(self.f_ram)
+        delay(100*us)
+ 
+        '''enable RAM mode (enacted by IO pulse) and fix other parameters:'''
+        self.ad9910_0.set_cfr1(internal_profile=0, ram_destination=ad9910.RAM_DEST_FTW, ram_enable=1 ,manual_osk_external=0,osk_enable=1,select_auto_osk=0)
+        self.ad9910_0.set_amplitude(0.05)
+        self.ad9910_0.cpld.io_update.pulse_mu(8)
   
     @kernel
     def blue_mot_loading(self):               #Loading the Atoms into the Blue MOT
          # blue_amp = 0.08
-            self.blue_mot_aom.set(frequency=90 * MHz, amplitude=0.08)
-            self.zeeman_slower_aom.set(frequency=70 * MHz, amplitude=0.35)
-            self.probe_aom.set(frequency=200 * MHz, amplitude=0.02)
-            self.red_mot_aom.set(frequency=80 * MHz, amplitude=0.35)
+            self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
+            self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
+            self.probe_aom.set(frequency= 200 * MHz, amplitude=0.18)
             
-            voltage_1 = 0.976
-            voltage_2 = 0.53
+            
+            voltage_1 = 6.9
+            voltage_2 = 7
             self.mot_coil_1.write_dac(0, voltage_1)
             self.mot_coil_2.write_dac(1, voltage_2)
 
@@ -98,52 +153,54 @@ class Lab_based_Clock_Sequence(EnvExperiment):
                 self.zeeman_slower_shutter.on()
                 self.repump_shutter.on()
                
-                # self.Flush.off()
 
             delay(self.Loading_Time*ms)
+            self.red_mot_aom.cpld.set_profile(0)
+            self.red_mot_aom.sw.on()
 
     @kernel
     def blue_mot_compression(self):           #We compress the Blue MOT here by ramping up the magnetic field gradient and ramping down the optical power
             
-        #ramp up blue MOT field
-            self.zeeman_slower_aom.set(frequency=70 * MHz, amplitude=0.00)   #Turn off the Zeeman Slower, could ramp this down too?
-            self.zeeman_slower_shutter.off()
+        
+        self.zeeman_slower_aom.set(frequency=70 * MHz, amplitude=0.00)   #Turn off the Zeeman Slower, could ramp this down too?
+        self.zeeman_slower_shutter.off()
+            
      
-            delay(4.0*ms)                                                 #wait for shutter to close
+        delay(4.0*ms)                                                 #wait for shutter to close
 
-            num_steps_com = self.blue_mot_compression_time              #steps of 1ms so num of steps is equivalent to length of ramp, can we get shorter time steps?
-            t_com = self.blue_mot_compression_time / num_steps_com
-            amp_steps = (0.08 - 0.003) / num_steps_com   #initial amplitude to final amplitude
+        num_steps_com = self.blue_mot_compression_time              #steps of 1ms so num of steps is equivalent to length of ramp, can we get shorter time steps?
+        t_com = self.blue_mot_compression_time / num_steps_com
+        amp_steps = (0.08 - 0.003) / num_steps_com   #initial amplitude to final amplitude
 
 
-            bmot_coil_1_low = 2              #Starting coil values for coil ramp
-            bmot_coil_2_low = 2.1
-            bmot_coil_1_high = 1.5           #End coil values for coil ramp
-            bmot_coil_2_high = 1.6
+        bmot_coil_1_low = 2              #Starting coil values for coil ramp
+        bmot_coil_2_low = 2.1
+        bmot_coil_1_high = 1.5           #End coil values for coil ramp
+        bmot_coil_2_high = 1.6
 
-            ramp_coil_1 = np.linspace(bmot_coil_1_low,bmot_coil_1_high,num_steps_com)      #Generate values for coil ramp
-            ramp_coil_2 = np.linspace(bmot_coil_1_low,bmot_coil_1_high,num_steps_com)
+        ramp_coil_1 = np.linspace(bmot_coil_1_low,bmot_coil_1_high,num_steps_com)      #Generate values for coil ramp
+        ramp_coil_2 = np.linspace(bmot_coil_2_low,bmot_coil_2_high,num_steps_com)
 
-            with parallel: 
+        with parallel: 
 
             # Ramping the amplitude of the blue MOT beam
-                for i in range(int64(num_steps_com)):
-                    amp = 0.08 - ((i+1) * amp_steps)
-                    self.blue_mot_aom.set(frequency=90*MHz, amplitude=amp)
-                    delay(t_com*ms)
+            for i in range(int64(num_steps_com)):
+                amp = 0.08 - ((i+1) * amp_steps)
+                self.blue_mot_aom.set(frequency=90*MHz, amplitude=amp)
+        delay(t_com*ms)
 
 
             # Ramping the MOT coils
-                for i in range(len(ramp_coil_1)):
-                    self.mot_coil_1.write_dac(0, ramp_coil_1[i])    #writes coil ramp value to the DAC
-                    self.mot_coil_2.write_dac(1, ramp_coil_2[i])
-                    with parallel:
-                        self.mot_coil_1.load()
-                        self.mot_coil_2.load()
-                    delay(t_com*ms)
+        for i in range(len(ramp_coil_1)):
+            self.mot_coil_1.write_dac(0, ramp_coil_1[i])    #writes coil ramp value to the DAC
+            self.mot_coil_2.write_dac(1, ramp_coil_2[i])
+            with parallel:
+                self.mot_coil_1.load()
+                self.mot_coil_2.load()
+                delay(t_com*ms)
 
 
-            delay(self.blue_mot_compression*ms)
+        delay(self.blue_mot_compression*ms)
 
     @kernel
     def broadband_red_mot(self):              #We will turn on the Red MOT beams after the loading phase, then as soon as atoms are cool enough they will begin to cool under the red transition
