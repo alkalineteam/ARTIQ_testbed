@@ -11,7 +11,7 @@ class Everything_ON(EnvExperiment):
         #TTLs
         self.blue_mot_shutter:TTLOut=self.get_device("ttl4")
         self.repump_shutter:TTLOut=self.get_device("ttl5")
-        self.zeeman_slower:TTLOut=self.get_device("ttl6")
+        self.zeeman_slower_shutter:TTLOut=self.get_device("ttl6")
         self.probe_shutter:TTLOut=self.get_device("ttl7")
         self.camera_trigger:TTLOut=self.get_device("ttl8")
         self.clock_shutter:TTLOut=self.get_device("ttl9")
@@ -26,7 +26,7 @@ class Everything_ON(EnvExperiment):
         self.probe_aom = self.get_device("urukul0_ch3")
         #AD9912
         self.lattice_aom=self.get_device("urukul1_ch0")
-        self.stepping_aom_aom=self.get_device("urukul1_ch1")
+        self.stepping_aom=self.get_device("urukul1_ch1")
         self.atom_lock_aom=self.get_device("urukul1_ch2")
                
                #Zotino
@@ -36,29 +36,31 @@ class Everything_ON(EnvExperiment):
         
         self.setattr_argument("Sequence", NumberValue(default = 0.0))
         self.setattr_argument("Cycle", NumberValue(default = 50))
+        self.setattr_argument("probe_ON", BooleanValue(default = False))
+        self.setattr_argument("switch_all_off",BooleanValue(default=False))
 
-        self.setattr_argument("BMOT_Frequency", NumberValue(default = 90.0))
-        self.setattr_argument("BMOT_Amplitude", NumberValue(default = 0.1))
+        self.setattr_argument("blue_mot_frequency", NumberValue(default = 90.0))
+        self.setattr_argument("blue_mot_amplitude", NumberValue(default = 0.06))
         # self.setattr_argument("BMOT_Attenuation", NumberValue(default = 0.0))
 
-        self.setattr_argument("Zeeman_Frequency", NumberValue(default = 70.0))
-        self.setattr_argument("Zeeman_Amplitude", NumberValue(default = 0.09)) 
+        self.setattr_argument("zeeman_frequency", NumberValue(default = 70.0))
+        self.setattr_argument("zeeman_amplitude", NumberValue(default = 0.08)) 
         # self.setattr_argument("Zeeman_Attenuation", NumberValue(default = 0.0))
 
-        self.setattr_argument("RMOT_Frequency", NumberValue(default = 80.0))
-        self.setattr_argument("RMOT_Amplitude", NumberValue(default = 0.05)) 
+        self.setattr_argument("red_mot_frequency", NumberValue(default = 80.0))
+        self.setattr_argument("red_mot_amplitude", NumberValue(default = 0.05)) 
         # self.setattr_argument("RMOT_Attenuation", NumberValue(default = 0.0))
 
-        self.setattr_argument("Probe_Frequency", NumberValue(default = 200.0))
-        self.setattr_argument("Probe_Amplitude", NumberValue(default = 0.3)) 
+        self.setattr_argument("probe_frequency", NumberValue(default = 200.0))
+        self.setattr_argument("probe_amplitude", NumberValue(default = 0.18)) 
         # self.setattr_argument("Probe_Attenuation", NumberValue(default = 0.0))
 
-        self.settr_argument("lattice_frequency", NumberValue(default = 100.0))
-        self.settr_argument("lattice_attenuation_dB", NumberValue(default = 10))
+        self.setattr_argument("lattice_frequency", NumberValue(default = 100.0))
+        self.setattr_argument("lattice_attenuation_dB", NumberValue(default = 0.00))
 
         self.setattr_argument("clock_frequency", NumberValue(default = 85.0))
-        self.setattr_argument("clock_attenuation_dB", NumberValue(default = 16)
-        self.setattr_argument("Switch_off",BooleanValue(default=False))
+        self.setattr_argument("clock_attenuation_dB", NumberValue(default = 16))
+        
 
     @kernel
     def run(self):
@@ -92,7 +94,7 @@ class Everything_ON(EnvExperiment):
         self.zeeman_slower_aom.sw.on()
         self.red_mot_aom.sw.on()
         self.probe_aom.sw.on()
-        self.lattice_aom.sw,on()
+        self.lattice_aom.sw.on()
         self.atom_lock_aom.sw.on()
         self.stepping_aom.sw.on()
 
@@ -103,7 +105,7 @@ class Everything_ON(EnvExperiment):
         self.red_mot_aom.set_att(0.0)
         self.probe_aom.set_att(0.0)
        
-
+        
 
         # self.mot_coil_1.write_dac(0, 0.976)    
         # self.mot_coil_2.write_dac(1, 0.53)
@@ -113,19 +115,24 @@ class Everything_ON(EnvExperiment):
             # self.mot_coil_2.load()
             self.repump_shutter.on()
             self.blue_mot_shutter.on()
-            self.red_mot_shutter.on()
+            self.probe_shutter.on()
             self.zeeman_slower_shutter.on()
+            self.clock_shutter.on()
 
-        self.blue_mot_aom.set(frequency= self.BMOT_Frequency * MHz, amplitude=1.0)
+            if self.probe_ON == True: 
+                self.probe_shutter.on()
 
-        self.zeeman_slower_aom.set(frequency=self.Zeeman_Frequency * MHz, amplitude=1.0)
 
-        self.red_mot_aom.set(frequency=self.RMOT_Frequency * MHz, amplitude=1.0)
+        self.blue_mot_aom.set(frequency= self.blue_mot_frequency * MHz, amplitude=self.blue_mot_amplitude)
 
-        self.probe_aom.set(frequency=self.Probe_Frequency * MHz, amplitude=1.0)
+        self.zeeman_slower_aom.set(frequency=self.zeeman_frequency * MHz, amplitude=self.zeeman_amplitude)
+
+        self.red_mot_aom.set(frequency=self.red_mot_frequency * MHz, amplitude=self.red_mot_amplitude)
+
+        self.probe_aom.set(frequency=self.probe_frequency * MHz, amplitude=self.probe_amplitude)
 
         self.lattice_aom.set(frequency=self.lattice_frequency * MHz)
-        self.lattice_aom.set_att(self.lattice_attenuation * dB)
+        self.lattice_aom.set_att(self.lattice_attenuation_dB * dB)
 
         self.stepping_aom.set(frequency=self.clock_frequency * MHz)
         self.stepping_aom.set_att(self.clock_attenuation_dB * dB)
@@ -171,7 +178,7 @@ class Everything_ON(EnvExperiment):
         #         self.mot_coil_2.load()
         
 
-        if self.Switch_off == True: 
+        if self.switch_all_off == True: 
             self.blue_mot_aom.sw.off()
             self.zeeman_slower_aom.sw.off()
             self.red_mot_aom.sw.off()

@@ -31,7 +31,7 @@ class TestAD9910(EnvExperiment):
 
 
         '''Single Frequency Output'''
-        self.ad9910_0.set(frequency=200*MHz, amplitude=0.3)
+        self.ad9910_0.set(frequency=200*MHz, amplitude=0.18)
 
 
 

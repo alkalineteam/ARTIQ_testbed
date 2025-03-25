@@ -8,6 +8,7 @@ class TestAD9912(EnvExperiment):
     
         self.setattr_argument("Number_of_pulse", NumberValue(default=10))
         self.setattr_argument("Pulse_width", NumberValue(default=1000)) 
+        self.setattr_argument("attenuation", NumberValue(default=20 *dB)) 
 
     @kernel
     def run(self):
@@ -19,9 +20,9 @@ class TestAD9912(EnvExperiment):
 
         self.ad9912_0.sw.on()
         
-        self.ad9912_0.set_att(10*dB)
+        self.ad9912_0.set_att(self.attenuation * dB)
 
-        self.ad9912_0.set(frequency=95*MHz)
+        self.ad9912_0.set(frequency=100*MHz)
 
         # for i in range(int64(self.Number_of_pulse)):
         #     self.ad9912_0.set(frequency=30 * MHz)
