@@ -11,12 +11,13 @@ class Everything_ON(EnvExperiment):
         #TTLs
         self.blue_mot_shutter:TTLOut=self.get_device("ttl4")
         self.repump_shutter:TTLOut=self.get_device("ttl5")
-        self.red_mot_shutter:TTLOut=self.get_device("ttl6")
-        self.zeeman_slower_shutter:TTLOut=self.get_device("ttl7")
-        self.probe_shutter:TTLOut=self.get_device("ttl8")
+        self.zeeman_slower:TTLOut=self.get_device("ttl6")
+        self.probe_shutter:TTLOut=self.get_device("ttl7")
+        self.camera_trigger:TTLOut=self.get_device("ttl8")
         self.clock_shutter:TTLOut=self.get_device("ttl9")
-        self.pmt_shutter:TTLOut=self.get_device("ttl10")
-        self.camera_trigger:TTLOut=self.get_device("ttl11")
+        
+        # self.pmt_shutter:TTLOut=self.get_device("ttl10")
+        # self.camera_trigger:TTLOut=self.get_device("ttl11")
         # self.camera_shutter:TTLOut=self.get_device("ttl12")        
         #AD9910
         self.red_mot_aom = self.get_device("urukul0_ch0")
@@ -25,8 +26,8 @@ class Everything_ON(EnvExperiment):
         self.probe_aom = self.get_device("urukul0_ch2")
         #AD9912
         self.lattice_aom=self.get_device("urukul1_ch0")
-        self.atom_lock_aom=self.get_device("urukul1_ch1")
-        self.stepping_aom=self.get_device("urukul1_ch2")
+        self.stepping_aom_aom=self.get_device("urukul1_ch1")
+        self.atom_lock_aom=self.get_device("urukul1_ch2")
                
                #Zotino
         # self.mot_coil_1=self.get_device("zotino0")
@@ -45,7 +46,7 @@ class Everything_ON(EnvExperiment):
         # self.setattr_argument("Zeeman_Attenuation", NumberValue(default = 0.0))
 
         self.setattr_argument("RMOT_Frequency", NumberValue(default = 80.0))
-        self.setattr_argument("RMOT_Amplitude", NumberValue(default = 0.13)) 
+        self.setattr_argument("RMOT_Amplitude", NumberValue(default = 0.08)) 
         # self.setattr_argument("RMOT_Attenuation", NumberValue(default = 0.0))
 
         self.setattr_argument("Probe_Frequency", NumberValue(default = 200))
