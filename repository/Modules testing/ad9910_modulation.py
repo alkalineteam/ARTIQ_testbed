@@ -67,7 +67,7 @@ class AD9910_RAM(EnvExperiment):
  
 		'''enable RAM mode (enacted by IO pulse) and fix other parameters:'''
 		self.ad9910_0.set_cfr1(internal_profile=0, ram_destination=ad9910.RAM_DEST_FTW, ram_enable=1 ,manual_osk_external=0,osk_enable=1,select_auto_osk=0)
-		self.ad9910_0.set_amplitude(0.05)
+		self.ad9910_0.set_amplitude(0.0)
 		self.ad9910_0.cpld.io_update.pulse_mu(8)
  
 		'''switch on DDS channel'''
