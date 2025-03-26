@@ -10,12 +10,12 @@ class Everything_ON(EnvExperiment):
 
         #TTLs
         self.blue_mot_shutter:TTLOut=self.get_device("ttl4")
-        self.repump_shutter:TTLOut=self.get_device("ttl5")
+        self.repump_shutter_707:TTLOut=self.get_device("ttl5")
         self.zeeman_slower_shutter:TTLOut=self.get_device("ttl6")
         self.probe_shutter:TTLOut=self.get_device("ttl7")
         self.camera_trigger:TTLOut=self.get_device("ttl8")
         self.clock_shutter:TTLOut=self.get_device("ttl9")
-
+        self.repump_shutter_679:TTLOut=self.get_device("ttl10")
         # self.pmt_shutter:TTLOut=self.get_device("ttl10")
         # self.camera_trigger:TTLOut=self.get_device("ttl11")
         # self.camera_shutter:TTLOut=self.get_device("ttl12")        
@@ -117,7 +117,8 @@ class Everything_ON(EnvExperiment):
         with parallel:
             self.mot_coil_1.load()
             self.mot_coil_2.load()
-            self.repump_shutter.on()
+            self.repump_shutter_707.on()
+            self.repump_shutter_679.on()
             self.blue_mot_shutter.on()
             self.probe_shutter.on()
             self.zeeman_slower_shutter.on()
