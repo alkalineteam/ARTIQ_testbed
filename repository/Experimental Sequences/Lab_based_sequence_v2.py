@@ -215,9 +215,6 @@ class Lab_based_Clock_Sequence(EnvExperiment):
         delay(self.blue_mot_compression_time*ms)
 
     @kernel
-    def print():
-        print("hello")
-    @kernel
     def broadband_red_mot(self):              #We will turn on the Red MOT beams after the loading phase, then as soon as atoms are cool enough they will begin to cool under the red transition
 
         self.blue_mot_aom.set(frequency=90*MHz,amplitude=0.00)
@@ -316,7 +313,6 @@ class Lab_based_Clock_Sequence(EnvExperiment):
         # self.dds_profile_init()
         self.initialise()  
         delay(2*ms)
-
         self.dds_profile_init()
         delay(3*ms)
 
@@ -324,23 +320,12 @@ class Lab_based_Clock_Sequence(EnvExperiment):
         self.red_mot_aom.cpld.set_profile(0)
         self.red_mot_aom.cpld.io_update.pulse_mu(8)
 
-        delay(5000*ms)
-
-
-        self.red_mot_aom.set_cfr1()     
-        self.red_mot_aom.cpld.io_update.pulse_mu(8)
-        delay(8*us)
-        self.red_mot_aom.cpld.set_profile(1)     
-        self.red_mot_aom.cpld.io_update.pulse_mu(8)
-        delay(8*us)
-     
-        # self.red_mot_aom.cpld.io_update.pulse_mu(8)
 
         print("run finished")
 
         for j in range(int64(self.cycles)):          #This runs the actual sequence
             
-            
+            ################ Blue MOT Loading ##########################
             self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
             self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
             self.probe_aom.set(frequency= 200 * MHz, amplitude=0.18)
@@ -363,12 +348,117 @@ class Lab_based_Clock_Sequence(EnvExperiment):
                 self.repump_shutter_707.on()
                 self.repump_shutter_679.on()
                 
-
+            delay(self.blue_mot_loading_time)
             
             # self.blue_mot_aom.sw.off()
-            self.red_mot_aom.cpld.set_profile(0)
-            self.red_mot_aom.cpld.io_update.pulse_mu(8)
+
+            ######################## Blue MOT Compression ##############################
+
+            self.zeeman_slower_aom.set(frequency=70 * MHz, amplitude=0.00)   #Turn off the Zeeman Slower
+            self.zeeman_slower_shutter.off()
             self.red_mot_aom.sw.on()
+                
+            delay(4.0*ms)                                                 #wait for shutter to close
+
+            num_steps_com = int(self.blue_mot_compression_time )             #steps of 1ms so num of steps is equivalent to length of ramp, can we get shorter time steps?
+            t_com = self.blue_mot_compression_time / num_steps_com
+            amp_steps = (0.06 - 0.003) / num_steps_com   #initial amplitude to final amplitude
+
+            bmot_coil_1_low = 7.95              #Starting coil values for coil ramp
+            bmot_coil_2_low = 8.0
+            bmot_coil_1_high = 8.45          #End coil values for coil ramp
+            bmot_coil_2_high = 8.5
+
+            step_1 = (bmot_coil_1_high - bmot_coil_1_low) / (num_steps_com - 1)
+            ramp_coil_1 = [bmot_coil_1_low + i * step_1 for i in range(num_steps_com)]
+
+            step_2 = (bmot_coil_2_high - bmot_coil_2_low) / (num_steps_com - 1)
+            ramp_coil_2 = [bmot_coil_2_low + i * step_2 for i in range(num_steps_com)]
+
+            with parallel: 
+
+                # # Ramping the amplitude of the blue MOT beam
+                for i in range(int64(num_steps_com)):
+                    amp = 0.06 - ((i+1) * amp_steps)
+                    self.blue_mot_aom.set(frequency=90*MHz, amplitude=amp)
+                    delay(t_com*ms)
+
+                # Ramping the MOT coils
+                for i in range(len(ramp_coil_1)):
+                    self.mot_coil_1.write_dac(0, ramp_coil_1[i])    #writes coil ramp value to the DAC
+                    self.mot_coil_2.write_dac(1, ramp_coil_2[i])
+                    with parallel:
+                        self.mot_coil_1.load()
+                        self.mot_coil_2.load()
+                        delay(t_com*ms)
 
 
-         
+            delay(self.blue_mot_compression_time*ms)
+
+        ###################### Broadband Red MOT ############################
+        self.blue_mot_aom.set(frequency=90*MHz,amplitude=0.00)   
+        self.blue_mot_aom.sw.off()                                   #Switch off blue beams
+        self.blue_mot_shutter.off()
+
+        voltage_1 = 5.3       #Broadband red mot at 5.3G/cm    #Coils are 18 G/cm/A 
+        voltage_2 = 5.3
+
+        self.mot_coil_1.write_dac(0, voltage_1)
+        self.mot_coil_2.write_dac(1, voltage_2)
+
+        with parallel:
+            self.mot_coil_1.load()
+            self.mot_coil_2.load()
+        delay(self.broadband_red_mot_time*ms)
+
+        ######################### Red MOT Compression ##########################
+
+        num_steps_com = int(self.red_mot_compression_time )             #steps of 1ms so num of steps is equivalent to length of ramp, can we get shorter time steps?
+        t_com = self.red_mot_compression_time / num_steps_com
+        amp_steps = (0.05 - 0.003) / num_steps_com   #initial amplitude to final amplitude
+
+        #we want to ramp the field from 5G/cm to 13G/cm
+
+        rmot_coil_1_low = 5.3              #Starting coil values for coil ramp
+        rmot_coil_2_low = 5.3
+        rmot_coil_1_high = 5.72          #End coil values for coil ramp
+        rmot_coil_2_high = 5.72
+
+        step_1 = (rmot_coil_1_high - rmot_coil_1_low) / (num_steps_com - 1)
+        ramp_coil_1 = [rmot_coil_1_low + i * step_1 for i in range(num_steps_com)]
+
+        step_2 = (rmot_coil_2_high - bmot_coil_2_low) / (num_steps_com - 1)
+        ramp_coil_2 = [rmot_coil_2_low + i * step_2 for i in range(num_steps_com)]
+
+
+        # with parallel: 
+
+            # # Ramping the amplitude of the blue MOT beam
+            # for i in range(int64(num_steps_com)):
+            #     amp = 0.08 - ((i+1) * amp_steps)
+            #     self.blue_mot_aom.set(frequency=90*MHz, amplitude=amp)
+            # delay(t_com*ms)
+
+
+            # Ramping the MOT coils
+        for i in range(len(ramp_coil_1)):
+            self.mot_coil_1.write_dac(0, ramp_coil_1[i])    #writes coil ramp value to the DAC
+            self.mot_coil_2.write_dac(1, ramp_coil_2[i])
+            with parallel:
+                self.mot_coil_1.load()
+                self.mot_coil_2.load()
+                delay(t_com*ms)
+
+
+        delay(self.red_mot_compression_time*ms)
+  
+        ##################### Single Frequency ##################################
+
+        self.red_mot_aom.set_cfr1()     
+        self.red_mot_aom.cpld.io_update.pulse_mu(8)
+        delay(8*us)
+        self.red_mot_aom.cpld.set_profile(1)     
+        self.red_mot_aom.cpld.io_update.pulse_mu(8)
+        delay(8*us)
+     
+        # self.red_mot_aom.cpld.io_update.pulse_mu(8)
