@@ -5,7 +5,7 @@ from numpy import int64
 class TestTTL(EnvExperiment):
     def build(self):
         self.setattr_device("core")
-        self.ttl:TTLOut=self.get_device("ttl9") 
+        self.ttl:TTLOut=self.get_device("ttl10") 
 
         self.setattr_argument("Number_of_pulse", NumberValue(default=10))
         self.setattr_argument("Pulse_width", NumberValue(default=100))

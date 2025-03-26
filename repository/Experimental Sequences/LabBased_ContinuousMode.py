@@ -10,12 +10,12 @@ class Everything_ON(EnvExperiment):
 
         #TTLs
         self.blue_mot_shutter:TTLOut=self.get_device("ttl4")
-        self.repump_shutter:TTLOut=self.get_device("ttl5")
+        self.repump_shutter_707:TTLOut=self.get_device("ttl5")
         self.zeeman_slower_shutter:TTLOut=self.get_device("ttl6")
         self.probe_shutter:TTLOut=self.get_device("ttl7")
         self.camera_trigger:TTLOut=self.get_device("ttl8")
         self.clock_shutter:TTLOut=self.get_device("ttl9")
-
+        self.repump_shutter_679:TTLOut=self.get_device("ttl10")
         # self.pmt_shutter:TTLOut=self.get_device("ttl10")
         # self.camera_trigger:TTLOut=self.get_device("ttl11")
         # self.camera_shutter:TTLOut=self.get_device("ttl12")        
@@ -30,14 +30,15 @@ class Everything_ON(EnvExperiment):
         self.atom_lock_aom=self.get_device("urukul1_ch2")
                
                #Zotino
-        # self.mot_coil_1=self.get_device("zotino0")
-        # self.mot_coil_2=self.get_device("zotino0")
+        self.mot_coil_1=self.get_device("zotino0")
+        self.mot_coil_2=self.get_device("zotino0")
                
         
         self.setattr_argument("Sequence", NumberValue(default = 0.0))
         self.setattr_argument("Cycle", NumberValue(default = 50))
         self.setattr_argument("probe_ON", BooleanValue(default = False))
         self.setattr_argument("switch_all_off",BooleanValue(default=False))
+        self.setattr_argument("coils_off",BooleanValue(default=False))
 
         self.setattr_argument("blue_mot_frequency", NumberValue(default = 90.0))
         self.setattr_argument("blue_mot_amplitude", NumberValue(default = 0.06))
@@ -67,8 +68,8 @@ class Everything_ON(EnvExperiment):
         self.core.reset()
         self.core.break_realtime()
 
-        # self.mot_coil_1.init()
-        # self.mot_coil_2.init()
+        self.mot_coil_1.init()
+        self.mot_coil_2.init()
 
         # initialise AD9910
         self.blue_mot_aom.cpld.init()
@@ -93,7 +94,7 @@ class Everything_ON(EnvExperiment):
         self.blue_mot_aom.sw.on()
         self.zeeman_slower_aom.sw.on()
         self.red_mot_aom.sw.on()
-        self.probe_aom.sw.on()
+        self.probe_aom.sw.off()
         self.lattice_aom.sw.on()
         self.atom_lock_aom.sw.on()
         self.stepping_aom.sw.on()
@@ -106,14 +107,18 @@ class Everything_ON(EnvExperiment):
         self.probe_aom.set_att(0.0)
        
         
-
-        # self.mot_coil_1.write_dac(0, 0.976)    
-        # self.mot_coil_2.write_dac(1, 0.53)
+        if self.coils_off == False:
+            self.mot_coil_1.write_dac(0, 8.1)    
+            self.mot_coil_2.write_dac(1, 8.1)
+        else: 
+            self.mot_coil_1.write_dac(0, 5.0)    
+            self.mot_coil_2.write_dac(1, 5.0)
         
         with parallel:
-            # self.mot_coil_1.load()
-            # self.mot_coil_2.load()
-            self.repump_shutter.on()
+            self.mot_coil_1.load()
+            self.mot_coil_2.load()
+            self.repump_shutter_707.on()
+            self.repump_shutter_679.on()
             self.blue_mot_shutter.on()
             self.probe_shutter.on()
             self.zeeman_slower_shutter.on()

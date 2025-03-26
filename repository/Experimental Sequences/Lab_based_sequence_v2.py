@@ -115,6 +115,7 @@ class Lab_based_Clock_Sequence(EnvExperiment):
         self.red_mot_aom.cpld.io_update.pulse(100*ns)
         self.core.break_realtime()
         self.red_mot_aom.set_att(0.0*dB)
+
         self.red_mot_aom.cpld.set_profile(1)		
         self.red_mot_aom.set(frequency=80.92*MHz, amplitude=0.05, profile=1)
         self.red_mot_aom.cpld.io_update.pulse_mu(8)
@@ -161,13 +162,10 @@ class Lab_based_Clock_Sequence(EnvExperiment):
                 self.repump_shutter_707.on()
                 self.repump_shutter_679.on()
                
-
-            
+            delay(self.blue_mot_loading_time)
+            print("Blue On")
             # self.blue_mot_aom.sw.off()
-            self.red_mot_aom.cpld.set_profile(0)
-            self.red_mot_aom.cpld.io_update.pulse_mu(8)
-            self.red_mot_aom.sw.on()
-
+ 
     @kernel
     def blue_mot_compression(self):           #We compress the Blue MOT here by ramping up the magnetic field gradient and ramping down the optical power
             
@@ -216,6 +214,9 @@ class Lab_based_Clock_Sequence(EnvExperiment):
 
         delay(self.blue_mot_compression_time*ms)
 
+    @kernel
+    def print():
+        print("hello")
     @kernel
     def broadband_red_mot(self):              #We will turn on the Red MOT beams after the loading phase, then as soon as atoms are cool enough they will begin to cool under the red transition
 
@@ -306,37 +307,6 @@ class Lab_based_Clock_Sequence(EnvExperiment):
 
         delay(10*ms)
 
-    def red_modulation_on(self,low_frequency,high_frequency,modulation_frequency,step_size):
-        self.core.break_realtime()
-        
-        #generate list of values to be read in the RAM profile
-        period = 1 / modulation_frequency
-        num_steps = int(period/ step_size) #1 step is equivalent to 4 ns 
-        
-        t = np.linspace(0,period,num_steps,endpoint=False)
-        modulation = low_frequency + (high_frequency) * 2 * np.abs(t / period - np.floor(t / period + 0.5)) #Generates all of the frequency values to be stored in the list
-
-        self.frequency_ram_list = [0] * len(modulation)          #creates list for RAM values to be stored in later
-
-        self.dds.set_cfr1(ram_enable=0)                         #ram needs to be set to zero to turn off frequency 
-        self.cpld0.io_update.pulse(8)
-
-        self.dds.set_profile_ram(start=0, end=len(self.asf_ram)-1,step=self.step_size, profile=0, mode=ad9910.RAM_MODE_CONT_BIDIR_RAMP) 
-        # #gives start and end adresses of where to look within the RAM
-        #step length, i.e. how long to run each element of the list. 1 step = 4ns
-        self.cpld0.io_update.pulse_mu(8) 
-
-        self.dds.frequency_to_ram(modulation,self.frequency_ram_list) 
-        self.dds.write_ram(self.frequency_ram_list)                     #converts the quantity we gave it into RAM profile data. Fill up the empty list we defined earlier
-        self.core.break_realtime()
-
-        self.dds.set(amplitude=0.08,ram_destination=ad9910.RAM_DEST_FTW) 
-
-
-        #must set the control function register ram_enable to 1 to enable ram playback
-        self.dds.set_cfr1(internal_profile=0, ram_enable = 1, ram_destination=ad9910.RAM_DEST_FTW, manual_osk_external=0, osk_enable=1, select_auto_osk=0) #for frequency modulation
-
-        self.cpld0.io_update.pulse_mu(8)
 
     @kernel
     def run(self):
@@ -346,48 +316,59 @@ class Lab_based_Clock_Sequence(EnvExperiment):
         # self.dds_profile_init()
         self.initialise()  
         delay(2*ms)
+
+        self.dds_profile_init()
+        delay(3*ms)
+
+
+        self.red_mot_aom.cpld.set_profile(0)
+        self.red_mot_aom.cpld.io_update.pulse_mu(8)
+
+        delay(5000*ms)
+
+
+        self.red_mot_aom.set_cfr1()     
+        self.red_mot_aom.cpld.io_update.pulse_mu(8)
+        delay(8*us)
+        self.red_mot_aom.cpld.set_profile(1)     
+        self.red_mot_aom.cpld.io_update.pulse_mu(8)
+        delay(8*us)
+     
+        # self.red_mot_aom.cpld.io_update.pulse_mu(8)
+
+        print("run finished")
+
         for j in range(int64(self.cycles)):          #This runs the actual sequence
-                delay(1*ms)
-                print(j)
-                self.blue_mot_loading()
+            
+            
+            self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
+            self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
+            self.probe_aom.set(frequency= 200 * MHz, amplitude=0.18)
 
-                self.blue_mot_shutter.off()
+            self.blue_mot_aom.sw.on()
+            self.zeeman_slower_aom.sw.on()
+            
+            
+            voltage_1 = 7.95
+            voltage_2 = 8.0
+            self.mot_coil_1.write_dac(0, voltage_1)
+            self.mot_coil_2.write_dac(1, voltage_2)
 
-                self.camera_trigger.pulse(100*ms)
-                delay(500 * ms)
+            with parallel:
+                self.mot_coil_1.load()
+                self.mot_coil_2.load()
+                self.blue_mot_shutter.on()
+                self.probe_shutter.off()
+                self.zeeman_slower_shutter.on()
+                self.repump_shutter_707.on()
+                self.repump_shutter_679.on()
+                
 
-            # if self.blue_mot_compression_time() == 0.0:            #If we are giving the time of a slice to be 0, then we will not run the slice but instead just image with the separate probe
-            #     self.seperate_probe_imaging                      #this stat
-            #     continue
-             
+            
             # self.blue_mot_aom.sw.off()
- 
-            # with parallel:
-                # self.blue_mot_compression()                    #We compress the blue MOT and turn on the red beam's on to start transferring atoms across
-    
-            # if self.blue_mot_cooling_time == 0: 
-            #     self.seperate_probe_imaging
-            #     continue
-
-            # delay(self.blue_mot_cooling_time*ms)
-
-            # if self.broadband_red_mot_time() == 0: 
-            #     self.seperate_probe_imaging
-            #     continue
-             
-            # self.broadband_red_mot()
-            
-            # if self.red_mot_compression_time == 0: 
-            #     self.seperate_probe_imaging
-            #     continue
-             
-            # self.red_mot_compression()
-            
-            # if self.single_frequency_time == 0:
-            #     self.seperate_probe_imaging
-            #     continue
-
-            # self.single_frequency_red_mot()
+            self.red_mot_aom.cpld.set_profile(0)
+            self.red_mot_aom.cpld.io_update.pulse_mu(8)
+            self.red_mot_aom.sw.on()
 
 
-            # self.seperate_probe_imaging()
+         
