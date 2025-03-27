@@ -349,6 +349,7 @@ class Lab_based_Clock_Sequence(EnvExperiment):
         for j in range(int64(self.cycles)):          #This runs the actual sequence
                 delay(1*ms)
                 print(j)
+                @kernel                         #Maybe this @kernel could fix the code not looping
                 self.blue_mot_loading()
 
                 self.blue_mot_shutter.off()
