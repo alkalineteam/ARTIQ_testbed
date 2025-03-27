@@ -136,7 +136,7 @@ class Lab_based_Clock_Sequence(EnvExperiment):
         self.red_mot_aom.set_amplitude(0.05)
         self.red_mot_aom.cpld.io_update.pulse_mu(8)
   
-    
+    @kernel
     def blue_mot_loading(self):               #Loading the Atoms into the Blue MOT
          # blue_amp = 0.08
             self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
