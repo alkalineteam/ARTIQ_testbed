@@ -1,53 +1,92 @@
 from artiq.experiment import *
-from numpy import int64, int32
-
-class AD9910_modulation(EnvExperiment):
-    def build(self):
-        self.setattr_device("core")
-        self.ad9910_0=self.get_device("urukul0_ch0") 
-    
-        self.setattr_argument("Number_of_pulse", NumberValue(default=10))
-        self.setattr_argument("Pulse_width", NumberValue(default=1000)) 
-
-    @kernel
-    def run(self):
-        self.core.reset()
-        self.core.break_realtime()
-
-        self.ad9910_0.cpld.init()
-        self.ad9910_0.init()
-
-        self.ad9910_0.sw.on()
+from artiq.coredevice import ad9910
+from numpy import int64
 
 
+Frequency_Modulation = 25000	# In Hz
 
-def AD9910_modulation_on(self,dds_channel,low_frequency,high_frequency,modulation_frequency,step_size)
-    
-    #generate list of values to be read in the RAM profile
-    period = 1 / modulation_frequency
-    num_steps = int(period/ step_size) #1 step is equivalent to 4 ns 
-    
-    t = np.linspace(0,period,num_steps,endpoint=False)
-    modulation = low_frequency + (high_frequency) * 2 * np.abs(t / period - np.floor(t / period + 0.5)) #Generates all of the frequency values to be stored in the list
+start_freq = 80.0*MHz
+end_freq = 81.0*MHz
 
-    self.frequency_ram_list = [0] * len(modulation)          #creates list for RAM values to be stored in later
+# N = int64((end_freq - start_freq) / Frequency_Modulation)
+N = 500
+#T = 64000100
+T = int((1 / (N*Frequency_Modulation)) /4e-9)
+ 
+class AD9910_RAM(EnvExperiment):
 
-    self.dds.set_cfr1(ram_enable=0)                         #ram needs to be set to zero to turn off frequency 
-    self.cpld0.io_update.pulse(8)
+	def build(self):
+		self.setattr_device("core")
+		self.setattr_device("urukul0_ch0") #Urukul module
+		self.ad9910_0 = self.urukul0_ch0
+ 
+	def prepare(self):
+ 
+		#create list of frequencies in FTW format to write to RAM
+ 
+		self.f = [0.]*N
+		self.f_ram = [0]*N
+ 
+		f_span = end_freq - start_freq
+		f_step = f_span / N 	
+ 
+		for i in range(N):
+			self.f[i] = start_freq+i*f_step
+		print(self.f)
+		
+		self.ad9910_0.frequency_to_ram(self.f, self.f_ram)
+		print(self.f_ram)
+ 
+	@kernel
+	def run(self):
+		self.core.reset()
 
-    self.dds.set_profile_ram(start=0, end=len(self.asf_ram)-1,step=self.step_size, profile=0, mode=ad9910.RAM_MODE_CONT_BIDIR_RAMP) 
-     # #gives start and end adresses of where to look within the RAM
-     #step length, i.e. how long to run each element of the list. 1 step = 4ns
-    self.cpld0.io_update.pulse_mu(8) 
+		self.core.break_realtime()
 
-    self.dds.frequency_to_ram(modulation,self.frequency_ram_list) 
-    self.dds.write_ram(self.frequency_ram_list)                     #converts the quantity we gave it into RAM profile data. Fill up the empty list we defined earlier
-    self.core.break_realtime()
+		'''initialize DDS channel'''
+		self.ad9910_0.cpld.init()
+		self.ad9910_0.init()
+		self.ad9910_0.cpld.io_update.pulse(100*ns)
+		self.core.break_realtime()
+		self.ad9910_0.set_att(0.0*dB)
+		self.ad9910_0.cpld.set_profile(1)		
+		self.ad9910_0.set(frequency=80.92*MHz, amplitude=0.05, profile=1)
+		self.ad9910_0.cpld.io_update.pulse_mu(8)
 
-    self.dds.set(amplitude=0.08,ram_destination=ad9910.RAM_DEST_FTW) 
+		'''prepare RAM profile:'''
+		self.ad9910_0.set_cfr1() #disable RAM for writing data
+		self.ad9910_0.cpld.io_update.pulse_mu(8) #I/O pulse to enact RAM change
+		self.ad9910_0.set_profile_ram(start=0, end=N-1, step=T, profile=0, mode=ad9910.RAM_MODE_CONT_BIDIR_RAMP)
+		self.ad9910_0.cpld.set_profile(0)
+		self.ad9910_0.cpld.io_update.pulse_mu(8)
+ 
+		'''write data to RAM:'''
+		delay(50*us)
+		self.ad9910_0.write_ram(self.f_ram)
+		delay(100*us)
+ 
+		'''enable RAM mode (enacted by IO pulse) and fix other parameters:'''
+		self.ad9910_0.set_cfr1(internal_profile=0, ram_destination=ad9910.RAM_DEST_FTW, ram_enable=1 ,manual_osk_external=0,osk_enable=1,select_auto_osk=0)
+		self.ad9910_0.set_amplitude(0.0)
+		self.ad9910_0.cpld.io_update.pulse_mu(8)
+ 
+		'''switch on DDS channel'''
+		self.ad9910_0.sw.on()	
 
+		delay(5000 * ms)
+		# print(self.ad9910_0.get(profile=1))
+		print("Testing done!")
 
-    #must set the control function register ram_enable to 1 to enable ram playback
-    self.dds.set_cfr1(internal_profile=0, ram_enable = 1, ram_destination=ad9910.RAM_DEST_FTW, manual_osk_external=0, osk_enable=1, select_auto_osk=0) #for frequency modulation
+		# Disable RAM before writing to the DDS
+		self.ad9910_0.set_cfr1()                          
+		self.ad9910_0.cpld.io_update.pulse_mu(8)
 
-    self.cpld0.io_update.pulse_mu(8)
+		'''switch on single-tone mode'''
+		self.ad9910_0.cpld.set_profile(1)
+		self.ad9910_0.cpld.io_update.pulse_mu(8)
+		
+		# Check profile of channel
+		# print(self.ad9910_0.get(profile=1))
+		
+
+		print("Testing done!")

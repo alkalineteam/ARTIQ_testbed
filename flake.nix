@@ -25,7 +25,7 @@
             ps.pandas
             #ps.numba
             ps.numpy
-	    ps.matplotlib
+	          ps.matplotlib
             # or if you need Qt (will recompile):
             #(ps.matplotlib.override { enableQt = true; })
             #ps.bokeh
