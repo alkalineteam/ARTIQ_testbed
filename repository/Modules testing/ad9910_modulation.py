@@ -32,10 +32,10 @@ class AD9910_RAM(EnvExperiment):
  
 		for i in range(N):
 			self.f[i] = start_freq+i*f_step
-		print(self.f)
+		# print(self.f)
 		
 		self.ad9910_0.frequency_to_ram(self.f, self.f_ram)
-		print(self.f_ram)
+		# print(self.f_ram)
  
 	@kernel
 	def run(self):
@@ -52,6 +52,8 @@ class AD9910_RAM(EnvExperiment):
 		self.ad9910_0.cpld.set_profile(1)		
 		self.ad9910_0.set(frequency=80.92*MHz, amplitude=0.05, profile=1)
 		self.ad9910_0.cpld.io_update.pulse_mu(8)
+
+		print(self.core.timestamp_mu())
 
 		'''prepare RAM profile:'''
 		self.ad9910_0.set_cfr1() #disable RAM for writing data
