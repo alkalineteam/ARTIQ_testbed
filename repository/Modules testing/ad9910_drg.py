@@ -1,7 +1,7 @@
 from artiq.experiment import *
 from artiq.coredevice import ad9910
-from mqva_control.experiment import MQVAExperiment
-from mqva_control.tools import log
+from numpy import int32
+
 
 default_cfr1 = (
     (1 << 1)    # configures the serial data I/O pin (SDIO) as an input only pin; 3-wire serial programming mode
@@ -14,112 +14,129 @@ default_cfr2 = (
 # print("10987654321098765432109876543210")
 # print(f"{default_cfr2:32b}")
 
-class Sequence(MQVAExperiment):
+class ad9910_drg(EnvExperiment):
 
     def build(self):
-        MQVAExperiment.build(self, config_dir="configs")
-        self._pmmanager.configure_artiq_methods(self)
+        self.setattr_device("core")
+        self.setattr_device("urukul0_ch0") #Urukul module
+        self.ad9910_0 = self.urukul0_ch0
+ 
 
-    def prepare(self, ch):
-        log("INFO", "Preparing experiment")
-        super().prepare(ch)
+    # def prepare(self, ch):
+        # log("INFO", "Preparing experiment")
+        # super().prepare(ch)
 
     @kernel
-    def experiment(self, ch, sequence_type=""):
-        log("INFO", "Starting experiment")
+    def run(self):
+        self.core.reset()
+        self.core.break_realtime()
+
+
+        # log("INFO", "Starting experiment")
         delay(10*ms)
-        ch.experiment_trigger.on()
+
+        # ch.experiment_trigger.on()
+
         cfr2 = (
             default_cfr2
             | (1 << 19) # enable digital ramp generator
             | (1 << 18) # enable no-dwell high functionality
             | (1 << 17) # enable no-dwell low functionality
         )
-        f_start = 168*MHz
-        A_start = 0.3
-        f_SWAP_start = 180*MHz
-        f_SWAP_end = 190*MHz
-        T_SWAP = 10*us
-        A_SWAP = 0.48
-        f_SF = 175*MHz
+        f_start = 0*MHz                          #Starting frequency
+        A_start = 0.05                             #Starting amplitude
+        f_SWAP_start = 80*MHz
+        f_SWAP_end = 81*MHz
+        T_SWAP = 40*us           #Time spent on each step  40us corresponding to 25kHz rate
+        A_SWAP = 0.08
+        f_SF = 80.92*MHz          #Single frequency red MOT frequency and amplitude
         A_SF = 0.05
         f_step = (f_SWAP_end - f_SWAP_start) * 4*ns / T_SWAP
 
-        f_start_ftw = ch.dds1.channel.frequency_to_ftw(f_start)
+        f_start_ftw = self.ad9910_0.frequency_to_ftw(f_start)
         A_start_mu = int32(round(A_start * 0x3fff)) << 16
-        f_SWAP_start_ftw = ch.dds1.channel.frequency_to_ftw(f_SWAP_start)
-        f_SWAP_end_ftw = ch.dds1.channel.frequency_to_ftw(f_SWAP_end)
-        f_step_ftw = ch.dds1.channel.frequency_to_ftw((f_SWAP_end - f_SWAP_start) * 4*ns / T_SWAP)
-        f_step_short_ftw = ch.dds1.channel.frequency_to_ftw(f_SWAP_end - f_SWAP_start)
+        f_SWAP_start_ftw = self.ad9910_0.frequency_to_ftw(f_SWAP_start)
+        f_SWAP_end_ftw = self.ad9910_0.frequency_to_ftw(f_SWAP_end)
+        f_step_ftw = self.ad9910_0.frequency_to_ftw((f_SWAP_end - f_SWAP_start) * 4*ns / T_SWAP)
+        f_step_short_ftw = self.ad9910_0.frequency_to_ftw(f_SWAP_end - f_SWAP_start)
         A_SWAP_mu = int32(round(A_SWAP * 0x3fff)) << 16
-        f_SF_ftw = ch.dds1.channel.frequency_to_ftw(f_SF)
+        f_SF_ftw = self.ad9910_0.frequency_to_ftw(f_SF)
         A_SF_mu = int32(round(A_SF * 0x3fff)) << 16
         
-        # print("CFR1", ch.dds1.channel.read32(ad9910._AD9910_REG_CFR1))
-        # delay(300*ms)
-        # print("CFR2", ch.dds1.channel.read32(ad9910._AD9910_REG_CFR2))
-        # delay(300*ms)
         # ========================
         # ==== IT BEGINS HERE ====
         # ========================
 
         # set initial frequency and amplitude
-        ch.dds1.channel.write64(
+        self.ad9910_0.write64(
             ad9910._AD9910_REG_PROFILE7,
             A_start_mu,
             f_start_ftw
         )
-        ch.dds1.channel.cpld.io_update.pulse_mu(8)
+        delay(8*us)
+        self.ad9910_0.cpld.io_update.pulse_mu(8)
+        
         # enable DDS output
-        ch.dds1.channel.sw.on()
-        # trigger scope
-        ch.trigger.pulse_nd(200*ns)
+        self.ad9910_0.sw.on()
+
         # ----- Prepare for ramp -----
         # set profile parameters
-        ch.dds1.channel.write64(
+        self.ad9910_0.write64(
             ad9910._AD9910_REG_PROFILE7,
             A_SWAP_mu,
             f_SWAP_start_ftw
         )
+        print("profile parameters set")
         # set ramp limits
-        ch.dds1.channel.write64(
+        self.ad9910_0.write64(
             ad9910._AD9910_REG_RAMP_LIMIT,
             f_SWAP_end_ftw,
             f_SWAP_start_ftw,
         )
+        print("ramp limits set")
         # set time step
-        ch.dds1.channel.write32(
+        self.ad9910_0.write32(
             ad9910._AD9910_REG_RAMP_RATE,
             ((1 << 16) | (1 << 0))
         )
+        print("Time step set")
         # set frequency step
-        ch.dds1.channel.write64(
+        self.ad9910_0.write64(
             ad9910._AD9910_REG_RAMP_STEP,
             f_step_short_ftw,
             f_step_ftw
         )
         # set control register
-        ch.dds1.channel.write32(ad9910._AD9910_REG_CFR2, cfr2)
+        self.ad9910_0.write32(ad9910._AD9910_REG_CFR2, cfr2)
         # safety delay, try decreasing if everything works
-        delay(100*us)
+        delay(10*us)
+        print("Ctrl register set")
         # start ramp
-        ch.dds1.channel.cpld.io_update.pulse_mu(8)
+
+        self.ad9910_0.cpld.io_update.pulse_mu(8)
         # trigger scope
-        ch.trigger.pulse_nd(200*ns)
+        # ch.trigger.pulse_nd(200*ns)
+
+
+
+
         # ----- Prepare for values after end of ramp -----
-        ch.dds1.channel.write64(
+        self.ad9910_0.write64(
             ad9910._AD9910_REG_PROFILE7,
             A_SF_mu,
             f_SF_ftw
         )
+
+
         # prepare control register for ramp end
-        ch.dds1.channel.write32(ad9910._AD9910_REG_CFR2, default_cfr2)
+        self.ad9910_0.write32(ad9910._AD9910_REG_CFR2, default_cfr2)
         # ramp duration
-        delay(600*us)
+        delay(1*s)
         # stop ramp
-        ch.dds1.channel.cpld.io_update.pulse_mu(8)
+        self.ad9910_0.cpld.io_update.pulse_mu(8)
         # trigger scope
-        ch.trigger.pulse_nd(200*ns)
+        # ch.trigger.pulse_nd(200*ns)
+
 
         # ======================
         # ==== IT ENDS HERE ====
@@ -129,7 +146,7 @@ class Sequence(MQVAExperiment):
         # print("CFR2", ch.dds1.channel.read32(ad9910._AD9910_REG_CFR2))
         # delay(300*ms)
         # ------------------------------------------------------------------------
-        delay(100*us)
-        ch.dds1.channel.sw.off()
-        ch.experiment_trigger.off()
+        delay(10*s)
+        self.ad9910_0.sw.off()
+        # ch.experiment_trigger.off()
         delay(10*ms)
