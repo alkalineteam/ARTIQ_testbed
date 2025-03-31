@@ -21,21 +21,12 @@ class ad9910_drg(EnvExperiment):
         self.setattr_device("urukul0_ch0") #Urukul module
         self.ad9910_0 = self.urukul0_ch0
  
-
-    # def prepare(self, ch):
-        # log("INFO", "Preparing experiment")
-        # super().prepare(ch)
-
     @kernel
     def run(self):
         self.core.reset()
         self.core.break_realtime()
 
-
-        # log("INFO", "Starting experiment")
         delay(10*ms)
-
-        # ch.experiment_trigger.on()
 
         cfr2 = (
             default_cfr2
@@ -86,20 +77,20 @@ class ad9910_drg(EnvExperiment):
             A_SWAP_mu,
             f_SWAP_start_ftw
         )
-        print("profile parameters set")
+
         # set ramp limits
         self.ad9910_0.write64(
             ad9910._AD9910_REG_RAMP_LIMIT,
             f_SWAP_end_ftw,
             f_SWAP_start_ftw,
         )
-        print("ramp limits set")
+
         # set time step
         self.ad9910_0.write32(
             ad9910._AD9910_REG_RAMP_RATE,
             ((1 << 16) | (1 << 0))
         )
-        print("Time step set")
+
         # set frequency step
         self.ad9910_0.write64(
             ad9910._AD9910_REG_RAMP_STEP,
@@ -108,17 +99,12 @@ class ad9910_drg(EnvExperiment):
         )
         # set control register
         self.ad9910_0.write32(ad9910._AD9910_REG_CFR2, cfr2)
+
         # safety delay, try decreasing if everything works
         delay(10*us)
-        print("Ctrl register set")
+        
         # start ramp
-
         self.ad9910_0.cpld.io_update.pulse_mu(8)
-        # trigger scope
-        # ch.trigger.pulse_nd(200*ns)
-
-
-
 
         # ----- Prepare for values after end of ramp -----
         self.ad9910_0.write64(
@@ -127,24 +113,18 @@ class ad9910_drg(EnvExperiment):
             f_SF_ftw
         )
 
-
         # prepare control register for ramp end
         self.ad9910_0.write32(ad9910._AD9910_REG_CFR2, default_cfr2)
         # ramp duration
         delay(1*s)
         # stop ramp
         self.ad9910_0.cpld.io_update.pulse_mu(8)
-        # trigger scope
-        # ch.trigger.pulse_nd(200*ns)
 
 
         # ======================
         # ==== IT ENDS HERE ====
         # ======================
-        # print("CFR1", ch.dds1.channel.read32(ad9910._AD9910_REG_CFR1))
-        # delay(300*ms)
-        # print("CFR2", ch.dds1.channel.read32(ad9910._AD9910_REG_CFR2))
-        # delay(300*ms)
+
         # ------------------------------------------------------------------------
         delay(10*s)
         self.ad9910_0.sw.off()
