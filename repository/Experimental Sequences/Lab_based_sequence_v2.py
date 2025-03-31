@@ -99,7 +99,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         delay(100*ms)
 
     @kernel
-    def red_modulation_on(self):          #state = 1 for modulation ON, 0 for modulation OFF
+    def red_modulation_on(self,f_start,A_start,f_SWAP_start,f_SWAP_end,T_SWAP,A_SWAP,f_SF,A_SF):          #state = 1 for modulation ON, 0 for modulation OFF
 
         cfr2 = (
             default_cfr2
@@ -107,14 +107,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
             | (1 << 18) # enable no-dwell high functionality
             | (1 << 17) # enable no-dwell low functionality
         )
-        f_start = 0*MHz                          #Starting frequency
-        A_start = 0.05                             #Starting amplitude
-        f_SWAP_start = 80*MHz
-        f_SWAP_end = 81*MHz
-        T_SWAP = 40*us           #Time spent on each step  40us corresponding to 25kHz rate
-        A_SWAP = 0.08
-        f_SF = 80.92*MHz          #Single frequency red MOT frequency and amplitude
-        A_SF = 0.05
+ 
         f_step = (f_SWAP_end - f_SWAP_start) * 4*ns / T_SWAP
 
         f_start_ftw = self.red_mot_aom.frequency_to_ftw(f_start)
@@ -165,11 +158,8 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
 
 
     @kernel
-    def red_modulation_off(self):
+    def red_modulation_off(self,f_SF,A_SF):
 
-
-        f_SF = 80.92*MHz          #Single frequency red MOT frequency and amplitude
-        A_SF = 0.05
         f_SF_ftw = self.red_mot_aom.frequency_to_ftw(f_SF)
         A_SF_mu = int32(round(A_SF * 0x3fff)) << 16
 
@@ -185,16 +175,17 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         self.red_mot_aom.write32(ad9910._AD9910_REG_CFR2, default_cfr2)
 
         self.red_mot_aom.cpld.io_update.pulse_mu(8)
+   
     @kernel
-    def blue_mot_loading(self,voltage_1,voltage_2):
+    def blue_mot_loading(self,bmot_voltage_1,bmot_voltage_2):
         self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
         self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
 
         self.blue_mot_aom.sw.on()
         self.zeeman_slower_aom.sw.on()
     
-        self.mot_coil_1.write_dac(0, voltage_1)
-        self.mot_coil_2.write_dac(1, voltage_2)
+        self.mot_coil_1.write_dac(0, bmot_voltage_1)
+        self.mot_coil_2.write_dac(1, bmot_voltage_2)
 
         with parallel:
             self.mot_coil_1.load()
@@ -206,37 +197,28 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
             self.repump_shutter_679.on()
     
     @kernel
-    def blue_mot_compression(self,start_voltage_1,start_voltage_2):
+    def blue_mot_compression(self,bmot_voltage_1,bmot_voltage_2,compress_bmot_volt_1,compress_bmot_volt_2,bmot_amp,compress_bmot_amp):
 
         self.zeeman_slower_aom.set(frequency=70 * MHz, amplitude=0.00)   #Turn off the Zeeman Slower
         self.zeeman_slower_shutter.off()
         delay(4.0*ms)                                                 #wait for shutter to close
 
 
-        # RED Modulation
-
-        self.red_modulation_on()
-
-        bm_voltage_1 = 8.0
-        bm_voltage_2 = 8.0
-        voltage_1_com = 8.5
-        voltage_2_com = 8.5
         blue_amp = 0.06
-        amp_com = 0.011
+        amp_c = 0.011
         steps_com = self.blue_mot_compression_time 
         t_com = self.blue_mot_compression_time/steps_com
-        volt_1_steps = (bm_voltage_1 - voltage_1_com)/steps_com
-        volt_2_steps = (bm_voltage_2 - voltage_2_com)/steps_com
-        amp_steps = (blue_amp-amp_com)/steps_com
+        volt_1_steps = (bmot_voltage_1 - compress_bmot_volt_1)/steps_com
+        volt_2_steps = (bmot_voltage_2 - compress_bmot_volt_2)/steps_com
+        amp_steps = (bmot_amp-compress_bmot_amp)/steps_com
     
         for i in range(int64(steps_com)):
-            voltage_1 = start_voltage_1 - volt_1_steps
-            voltage_2 = start_voltage_2 - volt_2_steps
+            voltage_1 = bmot_voltage_1 - volt_1_steps
+            voltage_2 = bmot_voltage_2 - volt_2_steps
             self.mot_coil_1.write_dac(0, voltage_1)
             self.mot_coil_2.write_dac(1, voltage_2)
             
-            amp_steps = (0.06 - 0.003)/steps_com
-            amp = 0.06 - ((i+1) * amp_steps)
+            amp = bmot_amp - ((i+1) * amp_steps)
 
             with parallel:
                 self.mot_coil_1.load()
@@ -283,7 +265,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
             delay(t_com*ms)
 
     @kernel 
-    def seperate_probe(self):
+    def seperate_probe(self,tof,probe_duration,probe_frequency):
             self.probe_shutter.on()
             self.mot_coil_1.write_dac(0, 4.051)
             self.mot_coil_2.write_dac(1, 4.088)
@@ -291,28 +273,26 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
                 self.mot_coil_1.load()
                 self.mot_coil_2.load()
 
-            delay((self.time_of_flight +4)*ms)
+            delay((tof +4)*ms)
 
             with parallel:
                     self.camera_trigger.on()
-                    self.probe_aom.set(frequency=200*MHz, amplitude=0.18)
+                    self.probe_aom.set(frequency=probe_frequency, amplitude=0.17)
                     self.probe_aom.sw.on()
                     
-            delay(2.2 *ms)
+            delay(probe_duration)
                     
             with parallel:
                 self.camera_trigger.off()
                 self.probe_shutter.off()
-                self.probe_aom.set(frequency=200*MHz, amplitude=0.00)
+                self.probe_aom.set(frequency=probe_frequency, amplitude=0.00)
                 self.probe_aom.sw.off()
             #set coil field to zero
             #wait for probe shutter to open
 
             delay(10*ms)
 
-    # @kernel
-    # def seperate_probe_imaging(self):         #imaging with seperate probe
-      
+
     @kernel
     def run(self):
         self.core.reset()
@@ -323,20 +303,42 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         for j in range(int(self.cycles)):          #This runs the actual sequence
             delay(100*us)
 
-            ################ Blue MOT Loading ##########################
-            bmot_voltage_1 = 7.95
-            bmot_voltage_2 = 8.0
+            self.blue_mot_loading(
+                 bmot_voltage_1 = 7.95,
+                 bmot_voltage_2 = 8.0
+            )
 
-            self.blue_mot_loading(bmot_voltage_1,bmot_voltage_2)
             delay(self.blue_mot_loading_time* ms)
             
+            self.red_modulation_on(
+                f_start = 80 * MHz,
+                A_start = 0.06,
+                f_SWAP_start = 80 * MHz,
+                f_SWAP_end = 81 * MHz,
+                T_SWAP = 40 * us,
+                A_SWAP = 0.0,
+                f_SF = 80.92 * MHz,
+                A_SF = 0.05
+            )
 
-            self.blue_mot_compression(bmot_voltage_1,bmot_voltage_2)
+            self.blue_mot_compression(
+                bmot_voltage_1 = 7.95,
+                bmot_voltage_2 = 8.0,
+                compress_bmot_volt_1 =8.5,
+                compress_bmot_volt_2 =8.5,
+                bmot_amp = 0.06,
+                compress_bmot_amp = 0.011
+            )
+
             delay(self.blue_mot_compression_time*ms)
 
             delay(60*ms)   #Allowing further cooling of the cloud
 
-            self.broadband_red_mot(rmot_voltage_1= 5.3,rmot_voltage_2 = 5.3)
+            self.broadband_red_mot(
+                rmot_voltage_1= 5.3,
+                rmot_voltage_2 = 5.3
+            )
+
             delay(self.broadband_red_mot_time*ms)
             
             self.red_mot_compression(
@@ -348,12 +350,18 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
 
             delay(self.red_mot_compression_time*ms)
 
-            self.red_modulation_off()
+            self.red_modulation_off(
+                f_SF = 80.92 * MHz,
+                A_SF = 0.02
+            )
+
             delay(self.single_frequency_time*ms)
             
-
-        
-            self.seperate_probe()
+            self.seperate_probe(
+                tof = self.time_of_flight,
+                probe_duration = 2.2 * ms,
+                probe_frequency= 200 * MHz
+            )
 
 
     

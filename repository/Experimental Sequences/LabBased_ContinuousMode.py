@@ -108,8 +108,8 @@ class Everything_ON(EnvExperiment):
        
         
         if self.coils_off == False:
-            self.mot_coil_1.write_dac(0, 8.1)    
-            self.mot_coil_2.write_dac(1, 8.1)
+            self.mot_coil_1.write_dac(0, 7.9)    
+            self.mot_coil_2.write_dac(1, 8.0)
         else: 
             self.mot_coil_1.write_dac(0, 5.0)    
             self.mot_coil_2.write_dac(1, 5.0)
@@ -123,9 +123,11 @@ class Everything_ON(EnvExperiment):
             self.probe_shutter.on()
             self.zeeman_slower_shutter.on()
             self.clock_shutter.on()
+            self.probe_shutter.on()
 
             if self.probe_ON == True: 
                 self.probe_shutter.on()
+                self.probe_aom.set(frequency=self.probe_frequency * MHz, amplitude=self.probe_amplitude)
 
 
         self.blue_mot_aom.set(frequency= self.blue_mot_frequency * MHz, amplitude=self.blue_mot_amplitude)
