@@ -94,7 +94,7 @@ class Everything_ON(EnvExperiment):
         self.blue_mot_aom.sw.on()
         self.zeeman_slower_aom.sw.on()
         self.red_mot_aom.sw.on()
-        self.probe_aom.sw.off()
+        self.probe_aom.sw.on()
         self.lattice_aom.sw.on()
         self.atom_lock_aom.sw.on()
         self.stepping_aom.sw.on()
@@ -108,7 +108,7 @@ class Everything_ON(EnvExperiment):
        
         
         if self.coils_off == False:
-            self.mot_coil_1.write_dac(0, 7.9)    
+            self.mot_coil_1.write_dac(0, 7.93)    
             self.mot_coil_2.write_dac(1, 8.0)
         else: 
             self.mot_coil_1.write_dac(0, 5.0)    
