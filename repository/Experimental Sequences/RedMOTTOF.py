@@ -12,7 +12,7 @@ default_cfr2 = (
     | (1 << 24) # the amplitude is scaled by the ASF from the active profile (without this, the DDS outputs max. possible amplitude -> cracked AOM crystals)
 )
 
-class Lab_based_Clock_Sequence_v2(EnvExperiment):
+class RedMOT_TOF(EnvExperiment):
     def build(self):
         self.setattr_device("core")
         
@@ -360,101 +360,189 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
 
         self.initialise_modules()
 
-        for j in range(int(self.cycles)):          #This runs the actual sequence
-            delay(100*us)
-
-            self.blue_mot_loading(
-                 bmot_voltage_1 = self.blue_mot_coil_1_voltage,
-                 bmot_voltage_2 = self.blue_mot_coil_2_voltage
-            )
-
-            delay(self.blue_mot_loading_time* ms)
-
-            # self.mot_as_probe(1*ms)
-
-
-
-
-            self.red_modulation_on(
-                f_start = 80 * MHz,
-                A_start = 0.06,
-                f_SWAP_start = 80 * MHz,
-                f_SWAP_end = 81 * MHz,
-                T_SWAP = 40 * us,
-                A_SWAP = 0.06,
-                f_SF = 80.92 * MHz,
-                A_SF = 0.05
-            )
-
-            self.blue_mot_compression(
-                bmot_voltage_1 = self.blue_mot_coil_1_voltage,
-                bmot_voltage_2 = self.blue_mot_coil_2_voltage,
-                compress_bmot_volt_1 =self.compressed_blue_mot_coil_1_voltage,
-                compress_bmot_volt_2 = self.compressed_blue_mot_coil_2_voltage,
-                bmot_amp = 0.06,
-                compress_bmot_amp = 0.005
-            )
-
-            delay(self.blue_mot_compression_time*ms)
-
-
-            delay(self.blue_mot_cooling_time*ms)   #Allowing further cooling of the cloud
-
-
-            # self.seperate_probe(
-            #     tof = self.time_of_flight,
-            #     probe_duration = 0.4 * ms,
-            #     probe_frequency= 200 * MHz
-            # )
+        
+             
             
 
+        for j in range(int(self.cycles)):          #This runs the actual sequence
 
+            if j <= 5:
+                    
+                delay(100*us)
 
+                self.red_mot_aom.sw.off()
+                self.blue_mot_loading(
+                    bmot_voltage_1 = self.blue_mot_coil_1_voltage,
+                    bmot_voltage_2 = self.blue_mot_coil_2_voltage
+                )
 
-            self.broadband_red_mot(
-                rmot_voltage_1= self.bb_rmot_coil_1_voltage,
-                rmot_voltage_2 = self.bb_rmot_coil_2_voltage
-            )
+                delay(self.blue_mot_loading_time* ms)
 
-            delay(self.broadband_red_mot_time*ms)
-
-
-            # self.red_mot_compression(
-            #     bb_rmot_volt_1 = self.bb_rmot_coil_1_voltage,
-            #     bb_rmot_volt_2 = self.bb_rmot_coil_2_voltage,
-            #     sf_rmot_volt_1 = self.sf_rmot_coil_1_voltage,
-            #     sf_rmot_volt_2 = self.sf_rmot_coil_2_voltage,
-            # )
-
-            # delay(self.red_mot_compression_time*ms)
-
-
-            self.red_modulation_off(
-                f_SF = 80.95 * MHz,
-                A_SF = 0.05
-            )
-
-            delay(self.single_frequency_time*ms)
-
-
-            self.seperate_probe(
-                tof = self.time_of_flight,
-                probe_duration = 0.2 * ms,
-                probe_frequency= 200 * MHz
-            )
+                # self.mot_as_probe(1*ms)
 
 
 
 
+                # self.red_modulation_on(
+                #     f_start = 80 * MHz,
+                #     A_start = 0.06,
+                #     f_SWAP_start = 80 * MHz,
+                #     f_SWAP_end = 81 * MHz,
+                #     T_SWAP = 40 * us,
+                #     A_SWAP = 0.06,
+                #     f_SF = 80.92 * MHz,
+                #     A_SF = 0.05
+                # )
+
+                self.blue_mot_compression(
+                    bmot_voltage_1 = self.blue_mot_coil_1_voltage,
+                    bmot_voltage_2 = self.blue_mot_coil_2_voltage,
+                    compress_bmot_volt_1 =self.compressed_blue_mot_coil_1_voltage,
+                    compress_bmot_volt_2 = self.compressed_blue_mot_coil_2_voltage,
+                    bmot_amp = 0.06,
+                    compress_bmot_amp = 0.005
+                )
+                self.red_mot_aom.sw.off()
+
+                delay(self.blue_mot_compression_time*ms)
+
+
+                delay(self.blue_mot_cooling_time*ms)   #Allowing further cooling of the cloud
+
+
+
+                self.broadband_red_mot(
+                    rmot_voltage_1= self.bb_rmot_coil_1_voltage,
+                    rmot_voltage_2 = self.bb_rmot_coil_2_voltage
+                )
+
+                delay(self.broadband_red_mot_time*ms)
+
+
+                # self.red_mot_compression(
+                #     bb_rmot_volt_1 = self.bb_rmot_coil_1_voltage,
+                #     bb_rmot_volt_2 = self.bb_rmot_coil_2_voltage,
+                #     sf_rmot_volt_1 = self.sf_rmot_coil_1_voltage,
+                #     sf_rmot_volt_2 = self.sf_rmot_coil_2_voltage,
+                # )
+
+                # delay(self.red_mot_compression_time*ms)
+
+
+                # self.red_modulation_off(
+                #     f_SF = 80.95 * MHz,
+                #     A_SF = 0.05
+                # )
+
+                delay(self.single_frequency_time*ms)
+
+
+                self.seperate_probe(
+                    tof = self.time_of_flight,
+                    probe_duration = 0.2 * ms,
+                    probe_frequency= 200 * MHz
+                )
+
+
+
+                delay(100*ms)
+
+            else:
+
+
+
+
+             
 
 
 
 
 
+                delay(100*us)
 
-            delay(100*ms)
+                self.blue_mot_loading(
+                    bmot_voltage_1 = self.blue_mot_coil_1_voltage,
+                    bmot_voltage_2 = self.blue_mot_coil_2_voltage
+                )
+
+                delay(self.blue_mot_loading_time* ms)
+
+                # self.mot_as_probe(1*ms)
 
 
+
+
+                self.red_modulation_on(
+                    f_start = 80 * MHz,
+                    A_start = 0.06,
+                    f_SWAP_start = 80 * MHz,
+                    f_SWAP_end = 81 * MHz,
+                    T_SWAP = 40 * us,
+                    A_SWAP = 0.06,
+                    f_SF = 80.92 * MHz,
+                    A_SF = 0.05
+                )
+
+                self.blue_mot_compression(
+                    bmot_voltage_1 = self.blue_mot_coil_1_voltage,
+                    bmot_voltage_2 = self.blue_mot_coil_2_voltage,
+                    compress_bmot_volt_1 =self.compressed_blue_mot_coil_1_voltage,
+                    compress_bmot_volt_2 = self.compressed_blue_mot_coil_2_voltage,
+                    bmot_amp = 0.06,
+                    compress_bmot_amp = 0.005
+                )
+
+
+                delay(self.blue_mot_compression_time*ms)
+
+
+                delay(self.blue_mot_cooling_time*ms)   #Allowing further cooling of the cloud
+
+
+                # self.seperate_probe(
+                #     tof = self.time_of_flight,
+                #     probe_duration = 0.4 * ms,
+                #     probe_frequency= 200 * MHz
+                # )
+                
+
+
+
+
+                self.broadband_red_mot(
+                    rmot_voltage_1= self.bb_rmot_coil_1_voltage,
+                    rmot_voltage_2 = self.bb_rmot_coil_2_voltage
+                )
+
+                delay(self.broadband_red_mot_time*ms)
+
+
+                # self.red_mot_compression(
+                #     bb_rmot_volt_1 = self.bb_rmot_coil_1_voltage,
+                #     bb_rmot_volt_2 = self.bb_rmot_coil_2_voltage,
+                #     sf_rmot_volt_1 = self.sf_rmot_coil_1_voltage,
+                #     sf_rmot_volt_2 = self.sf_rmot_coil_2_voltage,
+                # )
+
+                # delay(self.red_mot_compression_time*ms)
+
+
+                self.red_modulation_off(
+                    f_SF = 80.95 * MHz,
+                    A_SF = 0.05
+                )
+
+                delay(self.single_frequency_time*ms)
+
+
+                self.seperate_probe(
+                    tof = self.time_of_flight,
+                    probe_duration = 0.2 * ms,
+                    probe_frequency= 200 * MHz
+                )
+
+
+                delay(100*ms)
 
 
             
