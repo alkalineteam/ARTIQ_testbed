@@ -48,20 +48,21 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         self.setattr_argument("cycles", NumberValue(default=1))
         self.setattr_argument("blue_mot_loading_time", NumberValue(default=2000))
         self.setattr_argument("blue_mot_compression_time", NumberValue(default=20))
-        self.setattr_argument("blue_mot_cooling_time", NumberValue(default=60))
-        self.setattr_argument("broadband_red_mot_time", NumberValue(default=20))
+        self.setattr_argument("blue_mot_cooling_time", NumberValue(default=30))
+        self.setattr_argument("broadband_red_mot_time", NumberValue(default=15))
         self.setattr_argument("red_mot_compression_time", NumberValue(default=10))
-        self.setattr_argument("single_frequency_time", NumberValue(default=25))
-        self.setattr_argument("time_of_flight", NumberValue(default=30))
+        self.setattr_argument("single_frequency_time", NumberValue(default=15))
+        self.setattr_argument("time_of_flight", NumberValue(default=40))
 
         self.setattr_argument("blue_mot_coil_1_voltage", NumberValue(default=8.0))
         self.setattr_argument("blue_mot_coil_2_voltage", NumberValue(default=7.9))
-        self.setattr_argument("compressed_blue_mot_coil_1_voltage", NumberValue(default=8.45))
-        self.setattr_argument("compressed_blue_mot_coil_2_voltage", NumberValue(default=8.35))
-        self.setattr_argument("bb_rmot_coil_1_voltage", NumberValue(default=5.3))
-        self.setattr_argument("bb_rmot_coil_2_voltage", NumberValue(default=5.25))
+        self.setattr_argument("compressed_blue_mot_coil_1_voltage", NumberValue(default=8.55))
+        self.setattr_argument("compressed_blue_mot_coil_2_voltage", NumberValue(default=8.48))
+        self.setattr_argument("bb_rmot_coil_1_voltage", NumberValue(default=5.5))
+        self.setattr_argument("bb_rmot_coil_2_voltage", NumberValue(default=5.45))
         self.setattr_argument("sf_rmot_coil_1_voltage", NumberValue(default=5.65))
         self.setattr_argument("sf_rmot_coil_2_voltage", NumberValue(default=5.7))
+        self.setattr_argument("sf_frequency", NumberValue(default=80.92))
 
     @kernel
     def initialise_modules(self):
@@ -258,7 +259,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
             delay(self.broadband_red_mot_time*ms)
 
     @kernel
-    def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2):
+    def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2,frequency):
 
         bb_rmot_amp=0.05
         compress_rmot_amp=0.009
@@ -282,7 +283,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
             with parallel:
                 # self.mot_coil_1.load()
                 # self.mot_coil_2.load()
-                self.red_mot_aom.set(frequency = 80.92 * MHz, amplitude = amp)
+                self.red_mot_aom.set(frequency = frequency * MHz, amplitude = amp)
             
             delay(t_com*ms)
 
@@ -412,7 +413,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
             delay(self.broadband_red_mot_time*ms)
 
             self.red_modulation_off(
-                f_SF = 80.92 * MHz,
+                f_SF = self.sf_frequency * MHz,
                 A_SF = 0.04
             )
 
@@ -421,6 +422,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
                 bb_rmot_volt_2 = self.bb_rmot_coil_2_voltage,
                 sf_rmot_volt_1 = self.sf_rmot_coil_1_voltage,
                 sf_rmot_volt_2 = self.sf_rmot_coil_2_voltage,
+                frequency= self.sf_frequency
             )
 
             delay(self.red_mot_compression_time*ms)
@@ -430,7 +432,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
 
             self.seperate_probe(
                 tof = self.time_of_flight,
-                probe_duration = 0.02 * ms,
+                probe_duration = 0.2 * ms,
                 probe_frequency= 200 * MHz
             )
             
