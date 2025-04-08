@@ -18,7 +18,7 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.clock_shutter:TTLOut=self.get_device("ttl9")
         self.repump_shutter_679:TTLOut=self.get_device("ttl10")
 
-        self.pmt_shutter:TTLOut=self.get_device("ttl10")
+        #self.pmt_shutter:TTLOut=self.get_device("ttl10")
         # self.camera_trigger:TTLOut=self.get_device("ttl11")
         # self.camera_shutter:TTLOut=self.get_device("ttl12")        
         #AD9910
@@ -46,7 +46,7 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.setattr_argument("single_frequency_time", NumberValue(default=30))
         self.setattr_argument("time_of_flight", NumberValue(default=30))
             
-
+            
  @kernel
     def initialise(self):
         
@@ -113,69 +113,17 @@ class BlueMOT_Loadingtime(EnvExperiment):
                 self.repump_shutter_707.on()
                 self.repump_shutter_679.on()
 
-         for loading_time in range(50, 2001, 50):  # Loading time ranges from 50 to 1000ms in increments of 50
-           self.blue_mot_loading_time = loading_time * ms
-  
-            delay(self.blue_mot_loading_time)
             print("Blue On")
             # self.blue_mot_aom.sw.off()
-  @kernel
-    def blue_mot_compression(self):           #We compress the Blue MOT here by ramping up the magnetic field gradient and ramping down the optical power
-            
-        
-        self.zeeman_slower_aom.set(frequency=70 * MHz, amplitude=0.00)   #Turn off the Zeeman Slower, could ramp this down too?
-        self.zeeman_slower_shutter.off()
-            
-     
-        delay(4.0*ms)                                                 #wait for shutter to close
-
-        num_steps_com = int(self.blue_mot_compression_time )             #steps of 1ms so num of steps is equivalent to length of ramp, can we get shorter time steps?
-        t_com = self.blue_mot_compression_time / num_steps_com
-        amp_steps = (0.08 - 0.003) / num_steps_com   #initial amplitude to final amplitude
-
-
-        bmot_coil_1_low = 7.95              #Starting coil values for coil ramp
-        bmot_coil_2_low = 8.0
-        bmot_coil_1_high = 8.45          #End coil values for coil ramp
-        bmot_coil_2_high = 8.5
-
-        step_1 = (bmot_coil_1_high - bmot_coil_1_low) / (num_steps_com - 1)
-        ramp_coil_1 = [bmot_coil_1_low + i * step_1 for i in range(num_steps_com)]
-
-        step_2 = (bmot_coil_2_high - bmot_coil_2_low) / (num_steps_com - 1)
-        ramp_coil_2 = [bmot_coil_2_low + i * step_2 for i in range(num_steps_com)]
-
-
-        # with parallel: 
-
-            # # Ramping the amplitude of the blue MOT beam
-            # for i in range(int64(num_steps_com)):
-            #     amp = 0.08 - ((i+1) * amp_steps)
-            #     self.blue_mot_aom.set(frequency=90*MHz, amplitude=amp)
-            # delay(t_com*ms)
-
-
-            # Ramping the MOT coils
-        for i in range(len(ramp_coil_1)):
-            self.mot_coil_1.write_dac(0, ramp_coil_1[i])    #writes coil ramp value to the DAC
-            self.mot_coil_2.write_dac(1, ramp_coil_2[i])
-            with parallel:
-                self.mot_coil_1.load()
-                self.mot_coil_2.load()
-                delay(t_com*ms)
-
-
-        delay(self.blue_mot_compression_time*ms)
-
- @kernel
- def Sampler(self):
+@kernel
+ def Sampler(self, loading_time):
     self.core.break_realtime()                   #timebreak
     self.sampler0.init()                  #Initilises sampler
     n_samples = 10 
     self.set_dataset("samples",np.full(n_samples,np,nan)broadcast = true)        #creates data set 
 
 
-    n_channels = 1
+    n_channels = 2000
 
     self.core.break_realtime()
     for i in range (n_channels):               
@@ -186,10 +134,13 @@ class BlueMOT_Loadingtime(EnvExperiment):
     for n in range(n_samples):
         delay(90*us)
         self.sampler0.sample_mu(smp)          #runs sampler and saves to list 
-        self.mutate_dataset("samples",n,smp[0])         
+        self.mutate_dataset("samples",n,smp[0])        
+
+ ${artiq_applet}plot_xy samples 
 
         
-
+@kernel 
+def run()
  for j in range(10):      #Runs 10 times per cooling time
             
             ################ Blue MOT Loading ##########################
@@ -214,50 +165,11 @@ class BlueMOT_Loadingtime(EnvExperiment):
                 self.zeeman_slower_shutter.on()
                 self.repump_shutter_707.on()
                 self.repump_shutter_679.on()
-                
+
+         for loading_time in range(50, 2001, 50):  # Loading time ranges from 50 to 1000ms in increments of 50
+           self.blue_mot_loading_time = loading_time * ms
+
             delay(self.blue_mot_loading_time)
             
             # self.blue_mot_aom.sw.off()
 
-            ######################## Blue MOT Compression ##############################
-
-            self.zeeman_slower_aom.set(frequency=70 * MHz, amplitude=0.00)   #Turn off the Zeeman Slower
-            self.zeeman_slower_shutter.off()
-            self.red_mot_aom.sw.on()
-                
-            delay(4.0*ms)                                                 #wait for shutter to close
-
-            num_steps_com = int(self.blue_mot_compression_time )             #steps of 1ms so num of steps is equivalent to length of ramp, can we get shorter time steps?
-            t_com = self.blue_mot_compression_time / num_steps_com
-            amp_steps = (0.06 - 0.003) / num_steps_com   #initial amplitude to final amplitude
-
-            bmot_coil_1_low = 7.95              #Starting coil values for coil ramp
-            bmot_coil_2_low = 8.0
-            bmot_coil_1_high = 8.45          #End coil values for coil ramp
-            bmot_coil_2_high = 8.5
-
-            step_1 = (bmot_coil_1_high - bmot_coil_1_low) / (num_steps_com - 1)
-            ramp_coil_1 = [bmot_coil_1_low + i * step_1 for i in range(num_steps_com)]
-
-            step_2 = (bmot_coil_2_high - bmot_coil_2_low) / (num_steps_com - 1)
-            ramp_coil_2 = [bmot_coil_2_low + i * step_2 for i in range(num_steps_com)]
-
-            with parallel: 
-
-                # # Ramping the amplitude of the blue MOT beam
-                for i in range(int64(num_steps_com)):
-                    amp = 0.06 - ((i+1) * amp_steps)
-                    self.blue_mot_aom.set(frequency=90*MHz, amplitude=amp)
-                    delay(t_com*ms)
-
-                # Ramping the MOT coils
-                for i in range(len(ramp_coil_1)):
-                    self.mot_coil_1.write_dac(0, ramp_coil_1[i])    #writes coil ramp value to the DAC
-                    self.mot_coil_2.write_dac(1, ramp_coil_2[i])
-                    with parallel:
-                        self.mot_coil_1.load()
-                        self.mot_coil_2.load()
-                        delay(t_com*ms)
-
-
-            delay(self.blue_mot_compression_time*ms)
