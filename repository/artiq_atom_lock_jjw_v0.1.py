@@ -3,6 +3,8 @@
 Created on Thu Mar 13 11:09:30 2025
 
 @author: Jjw288
+
+No I have written the code not you jordan
 """
 
 from artiq.experiment import *
