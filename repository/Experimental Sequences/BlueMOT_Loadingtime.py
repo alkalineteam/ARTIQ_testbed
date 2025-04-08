@@ -47,7 +47,7 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.setattr_argument("time_of_flight", NumberValue(default=30))
             
             
- @kernel
+    @kernel
     def initialise(self):
         
         # Initialize the modules
@@ -115,16 +115,16 @@ class BlueMOT_Loadingtime(EnvExperiment):
 
             print("Blue On")
             # self.blue_mot_aom.sw.off()
-@kernel
- def Sampler(self, loading_time):
-    self.core.break_realtime()                   #timebreak
-    self.sampler0.init()                  #Initilises sampler
-    n_samples = 10 
-    self.set_dataset("samples",np.full(n_samples,np,nan)broadcast = true)        #creates data set 
+    @kernel
+    def Sampler(self, loading_time):
+        self.core.break_realtime()                   #timebreak
+        self.sampler0.init()                  #Initilises sampler
+        n_samples = 10 
+        self.set_dataset("samples",np.full(n_samples,np,nan)broadcast = true)        #creates data set 
 
 
     n_channels = 2000
-
+    
     self.core.break_realtime()
     for i in range (n_channels):               
         self.sampler0.set_gain_mu(7-i,0)          #sets channels gain to 0db
@@ -136,12 +136,9 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.sampler0.sample_mu(smp)          #runs sampler and saves to list 
         self.mutate_dataset("samples",n,smp[0])        
 
- ${artiq_applet}plot_xy samples 
-
-        
-@kernel 
-def run()
- for j in range(10):      #Runs 10 times per cooling time
+    @kernel 
+    def run():
+     for j in range(10):      #Runs 10 times per cooling time
             
             ################ Blue MOT Loading ##########################
             self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
@@ -166,10 +163,11 @@ def run()
                 self.repump_shutter_707.on()
                 self.repump_shutter_679.on()
 
-         for loading_time in range(50, 2001, 50):  # Loading time ranges from 50 to 1000ms in increments of 50
+    for loading_time in range(50, 2001, 50):  # Loading time ranges from 50 to 1000ms in increments of 50
            self.blue_mot_loading_time = loading_time * ms
-
-            delay(self.blue_mot_loading_time)
+    blue_mot_loading = loading_time*ms
+    
+    delay(self.blue_mot_loading_time)
             
             # self.blue_mot_aom.sw.off()
 
