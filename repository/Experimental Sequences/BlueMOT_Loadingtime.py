@@ -3,6 +3,7 @@ from artiq.coredevice.ttl import TTLOut
 from numpy import int64
 from artiq.coredevice import ad9910
 
+
 class BlueMOT_Loadingtime(EnvExperiment):
     def build(self):
         self.setattr_device("core")
@@ -120,7 +121,7 @@ class BlueMOT_Loadingtime(EnvExperiment):
     self.core.break_realtime()                   #timebreak
     self.sampler0.init()                  #Initilises sampler
     n_samples = 10 
-    self.set_dataset("samples",np.full(n_samples,np,nan)broadcast = true)        #creates data set 
+    self.set_dataset("samples",np.full(n_samples,np.nan), broadcast = true)        #creates data set 
 
 
     n_channels = 2000
@@ -136,7 +137,7 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.sampler0.sample_mu(smp)          #runs sampler and saves to list 
         self.mutate_dataset("samples",n,smp[0])        
 
- ${artiq_applet}plot_xy samples 
+
 
         
 @kernel 
