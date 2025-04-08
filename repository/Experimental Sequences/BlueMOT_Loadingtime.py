@@ -116,61 +116,60 @@ class BlueMOT_Loadingtime(EnvExperiment):
 
             print("Blue On")
             # self.blue_mot_aom.sw.off()
-@kernel
- def Sampler(self, loading_time):
-    self.core.break_realtime()                   #timebreak
-    self.sampler0.init()                  #Initilises sampler
-    n_samples = 10 
-    self.set_dataset("samples",np.full(n_samples,np.nan), broadcast = true)        #creates data set 
+    @kernel
+    def Sampler(self):
+        self.core.break_realtime()                   #timebreak
+        self.sampler0.init()                  #Initilises sampler
+        n_samples = 2000
+        self.set_dataset("samples",np.full(n_samples,np.nan), broadcast = true)        #creates data set 
 
+        n_channels = 1
+    
+        self.core.break_realtime()
+    
+        for i in range (n_channels):               
+           self.sampler0.set_gain_mu(7-i,0)          #sets channels gain to 0db
 
-    n_channels = 2000
+           smp = [0]*n_channels   
 
-    self.core.break_realtime()
-    for i in range (n_channels):               
-        self.sampler0.set_gain_mu(7-i,0)          #sets channels gain to 0db
-
-    smp = [0]*n_channels   
-
-    for n in range(n_samples):
-        delay(90*us)
+        for n in range(n_samples):
+            delay(90*us)
         self.sampler0.sample_mu(smp)          #runs sampler and saves to list 
         self.mutate_dataset("samples",n,smp[0])        
 
+    @kernel 
+    def run(self):
+     
+        for loading_time in range(50, 2001, 50):  # Loading time ranges from 50 to 1000ms in increments of 50
 
 
-        
-@kernel 
-def run()
- for j in range(10):      #Runs 10 times per cooling time
-            
-            ################ Blue MOT Loading ##########################
-            self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
-            self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
-            self.probe_aom.set(frequency= 200 * MHz, amplitude=0.18)
+            for j in range(10):      #Runs 10 times per cooling time
+                
+                ################ Blue MOT Loading ##########################
+                self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
+                self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
+                self.probe_aom.set(frequency= 200 * MHz, amplitude=0.18)
 
-            self.blue_mot_aom.sw.on()
-            self.zeeman_slower_aom.sw.on()
-            
-            
-            voltage_1 = 7.95
-            voltage_2 = 8.0
-            self.mot_coil_1.write_dac(0, voltage_1)
-            self.mot_coil_2.write_dac(1, voltage_2)
+                self.blue_mot_aom.sw.on()
+                self.zeeman_slower_aom.sw.on()
+                
+                
+                voltage_1 = 7.95
+                voltage_2 = 8.0
+                self.mot_coil_1.write_dac(0, voltage_1)
+                self.mot_coil_2.write_dac(1, voltage_2)
 
-            with parallel:
-                self.mot_coil_1.load()
-                self.mot_coil_2.load()
-                self.blue_mot_shutter.on()
-                self.probe_shutter.off()
-                self.zeeman_slower_shutter.on()
-                self.repump_shutter_707.on()
-                self.repump_shutter_679.on()
+                with parallel:
+                    self.mot_coil_1.load()
+                    self.mot_coil_2.load()
+                    self.blue_mot_shutter.on()
+                    self.probe_shutter.off()
+                    self.zeeman_slower_shutter.on()
+                    self.repump_shutter_707.on()
+                    self.repump_shutter_679.on()
 
-         for loading_time in range(50, 2001, 50):  # Loading time ranges from 50 to 1000ms in increments of 50
-           self.blue_mot_loading_time = loading_time * ms
-
-            delay(self.blue_mot_loading_time)
-            
-            # self.blue_mot_aom.sw.off()
+                delay(loading_time*ms)
+                # sample here
+                self.Sampler()
+         
 
