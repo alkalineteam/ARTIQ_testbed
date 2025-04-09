@@ -2,6 +2,8 @@ from artiq.experiment import *
 from artiq.coredevice.ttl import TTLOut
 from numpy import int64, int32
 from artiq.coredevice import ad9910
+from artiq.coredevice.sampler import Sampler
+import numpy as np
 
 default_cfr1 = (
     (1 << 1)    # configures the serial data I/O pin (SDIO) as an input only pin; 3-wire serial programming mode
@@ -17,6 +19,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
     def build(self):
         self.setattr_device("core")
         
+        self.sampler:Sampler = self.get_device("sampler0")
         #Assign all channels
               #TTLs
         self.blue_mot_shutter:TTLOut=self.get_device("ttl4")
@@ -29,8 +32,6 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         self.camera_shutter:TTLOut=self.get_device("ttl11")   
 
         # self.pmt_shutter:TTLOut=self.get_device("ttl10")
-
-     
         #AD9910
         self.red_mot_aom = self.get_device("urukul0_ch0")
         self.blue_mot_aom = self.get_device("urukul0_ch1")
@@ -94,6 +95,8 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         self.red_mot_aom.init()
         self.lattice_aom.cpld.init()
         self.lattice_aom.init()
+
+        self.sampler.init() 
 
         # Set the RF channels ON
         self.blue_mot_aom.sw.on()
@@ -351,6 +354,20 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
 
             delay(10*ms)
 
+    @kernel
+    def pmt_capture(self,sampling_duration,sampling_rate):
+        self.core.break_realtime()
+
+        samples = [[0.0 for i in range(8)] for i in range(num_samples)]
+        sample_period = 1 / sampling_rate
+        num_samples = int32(sampling_duration/sample_period)
+
+        with parallel:
+            for j in range(num_samples):
+                 self.sampler.sample(samples[j])
+         
+        samples_ch0 = [i[0] for i in samples]
+        self.set_dataset("samples", samples_ch0, broadcast=True, archive=True)
 
     @kernel
     def run(self):
@@ -416,6 +433,11 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
             delay(self.red_mot_compression_time*ms)
 
             delay(self.single_frequency_time*ms)
+
+            self.pmt_capture(
+                sampling_duration = 0.5,
+                sampling_rate= 1000
+            )
             
             self.seperate_probe(
                 tof = self.time_of_flight,
