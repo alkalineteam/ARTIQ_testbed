@@ -7,10 +7,11 @@ from numpy import int32
 import numpy as np
 import datetime
 
-class TestSampler(EnvExperiment):
+class sampler_test(EnvExperiment):
+    # "asasasasasasssasa"
     def build(self):
         self.setattr_device("core")
-        self.ttl:TTLOut=self.get_device("ttl4") 
+        self.ttl:TTLOut=self.get_device("ttl12") 
         self.sampler:Sampler = self.get_device("sampler0")
 
         self.setattr_argument("sample_rate", NumberValue())
@@ -20,12 +21,12 @@ class TestSampler(EnvExperiment):
         self.setattr_argument("Pulse_width", NumberValue())
         self.setattr_argument("Time_between_pulse", NumberValue())
 
-    @rpc
-    def save_data(self, filename, data):
-        current_time = datetime.datetime.now()
-        current_time = str(current_time.day) + '-' + str(current_time.month) + '-' + str(current_time.year) + '_' + str(current_time.hour) + '-' + str(current_time.minute) + '-' + str(current_time.second)
-        filenameplusdate = current_time + filename
-        np.savetxt(filenameplusdate, data)
+    # @rpc
+    # def save_data(self, filename, data):
+    #     current_time = datetime.datetime.now()
+    #     current_time = str(current_time.day) + '-' + str(current_time.month) + '-' + str(current_time.year) + '_' + str(current_time.hour) + '-' + str(current_time.minute) + '-' + str(current_time.second)
+    #     filenameplusdate = current_time + filename
+    #     np.savetxt(filenameplusdate, data)
 
     @kernel
     def run(self):
@@ -34,7 +35,7 @@ class TestSampler(EnvExperiment):
 
         self.sampler.init()
 
-        delay(40000*ms)
+        delay(4000*ms)
 
         num_samples = int32(self.sample_number)
         samples = [[0.0 for i in range(8)] for i in range(num_samples)]
@@ -50,7 +51,7 @@ class TestSampler(EnvExperiment):
                     self.sampler.sample(samples[j])
                     delay(sampling_period * s)
 
-        # delay(5000*ms)
+        delay(5000*ms)
 
         sample2 = [i[0] for i in samples]
         self.set_dataset("samples", sample2, broadcast=True, archive=True)
