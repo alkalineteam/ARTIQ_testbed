@@ -13,6 +13,7 @@ default_cfr2 = (
 )
 
 class Lab_based_Clock_Sequence_v2(EnvExperiment):
+
     def build(self):
         self.setattr_device("core")
         
@@ -109,7 +110,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         delay(100*ms)
 
     @kernel
-    def red_modulation_on(self,f_start,A_start,f_SWAP_start,f_SWAP_end,T_SWAP,A_SWAP,f_SF,A_SF):          #state = 1 for modulation ON, 0 for modulation OFF
+    def red_modulation_on(self,f_start,A_start,f_SWAP_start,f_SWAP_end,T_SWAP,A_SWAP):          #state = 1 for modulation ON, 0 for modulation OFF
 
         self.red_mot_aom.set_att(0.0)
 
@@ -122,15 +123,14 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
  
         f_step = (f_SWAP_end - f_SWAP_start) * 4*ns / T_SWAP
 
-        f_start_ftw = self.red_mot_aom.frequency_to_ftw(f_start)
-        A_start_mu = int32(round(A_start * 0x3fff)) << 16
+        #f_start_ftw = self.red_mot_aom.frequency_to_ftw(f_start)
+        #A_start_mu = int32(round(A_start * 0x3fff)) << 16
         f_SWAP_start_ftw = self.red_mot_aom.frequency_to_ftw(f_SWAP_start)
         f_SWAP_end_ftw = self.red_mot_aom.frequency_to_ftw(f_SWAP_end)
         f_step_ftw = self.red_mot_aom.frequency_to_ftw((f_SWAP_end - f_SWAP_start) * 4*ns / T_SWAP)
         f_step_short_ftw = self.red_mot_aom.frequency_to_ftw(f_SWAP_end - f_SWAP_start)
         A_SWAP_mu = int32(round(A_SWAP * 0x3fff)) << 16
-        f_SF_ftw = self.red_mot_aom.frequency_to_ftw(f_SF)
-        A_SF_mu = int32(round(A_SF * 0x3fff)) << 16
+
 
             # ----- Prepare for ramp -----
         # set profile parameters
@@ -168,7 +168,6 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         # start ramp
         self.red_mot_aom.cpld.io_update.pulse_mu(8)
 
-
     @kernel
     def red_modulation_off(self,f_SF,A_SF):
 
@@ -189,7 +188,6 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         self.red_mot_aom.cpld.io_update.pulse_mu(8)
 
         # self.red_mot_aom.set_att(19*dB)
-
 
     @kernel
     def blue_mot_loading(self,bmot_voltage_1,bmot_voltage_2):
@@ -287,9 +285,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
             
             delay(t_com*ms)
 
-
-
-
+    @kernel
     def mot_as_probe(self,probe_duration):
          
         self.red_mot_aom.sw.off()
@@ -300,6 +296,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
 
         self.mot_coil_1.write_dac(0, 4.051)
         self.mot_coil_2.write_dac(1, 4.088)
+
         with parallel:
             self.mot_coil_1.load()
             self.mot_coil_2.load()
@@ -318,19 +315,20 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         #set coil field to zero
         #wait for probe shutter to open
 
-
-
         delay(10*ms)
          
     @kernel 
     def seperate_probe(self,tof,probe_duration,probe_frequency):
-            self.red_mot_aom.sw.off()
-            self.blue_mot_aom.sw.off()
-            self.repump_shutter_679.off()
-            self.repump_shutter_707.off()
-            self.probe_shutter.on()
-            self.mot_coil_1.write_dac(0, 4.051)
+            with parallel:
+                self.red_mot_aom.sw.off()
+                self.blue_mot_aom.sw.off()
+                self.repump_shutter_679.off()
+                self.repump_shutter_707.off()
+                self.probe_shutter.on()
+
+            self.mot_coil_1.write_dac(0, 4.051)  
             self.mot_coil_2.write_dac(1, 4.088)
+           
             with parallel:
                 self.mot_coil_1.load()
                 self.mot_coil_2.load()
@@ -348,8 +346,6 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
                 self.probe_shutter.off()
                 self.probe_aom.set(frequency=probe_frequency, amplitude=0.00)
                 self.probe_aom.sw.off()
-            #set coil field to zero
-            #wait for probe shutter to open
 
             delay(10*ms)
 
@@ -370,28 +366,20 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
             )
 
             self.red_modulation_on(
-                f_start = 80 * MHz,
-                A_start = 0.06,
-                f_SWAP_start = 80 * MHz,
-                f_SWAP_end = 81 * MHz,
-                T_SWAP = 40 * us,
-                A_SWAP = 0.06,
-                f_SF = 80.92 * MHz,
-                A_SF = 0.06
+                f_start = 80 * MHz,        #Starting frequency of the ramp
+                A_start = 0.06,            #initial amplitude of the ramp
+                f_SWAP_start = 80 * MHz,   #Ramp lower limit
+                f_SWAP_end = 81 * MHz,     #Ramp upper limit
+                T_SWAP = 40 * us,          #Time spent on each step, 40us is equivalent to 25kHz modulation rate
+                A_SWAP = 0.06,             #Amplitude during modulation
             )
 
             delay(self.blue_mot_loading_time* ms)
 
-            # self.mot_as_probe(1*ms)
-
-
-
-
-
-            self.blue_mot_compression(
+            self.blue_mot_compression(                           #Here we are ramping up the blue MOT field and ramping down the blue power
                 bmot_voltage_1 = self.blue_mot_coil_1_voltage,
                 bmot_voltage_2 = self.blue_mot_coil_2_voltage,
-                compress_bmot_volt_1 =self.compressed_blue_mot_coil_1_voltage,
+                compress_bmot_volt_1 = self.compressed_blue_mot_coil_1_voltage,
                 compress_bmot_volt_2 = self.compressed_blue_mot_coil_2_voltage,
                 bmot_amp = 0.06,
                 compress_bmot_amp = 0.0035
@@ -399,25 +387,21 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
 
             delay(self.blue_mot_compression_time*ms)
 
+            delay(self.blue_mot_cooling_time*ms)   #Allowing further cooling of the cloud by just holding the atoms here
 
-
-
-            delay(self.blue_mot_cooling_time*ms)   #Allowing further cooling of the cloud
-
-
-            self.broadband_red_mot(
+            self.broadband_red_mot(                                  #Switch to low field gradient for Red MOT, switches off the blue beams
                 rmot_voltage_1= self.bb_rmot_coil_1_voltage,
                 rmot_voltage_2 = self.bb_rmot_coil_2_voltage
             )
 
             delay(self.broadband_red_mot_time*ms)
 
-            self.red_modulation_off(
+            self.red_modulation_off(                   #switch to single frequency
                 f_SF = self.sf_frequency * MHz,
                 A_SF = 0.04
             )
 
-            self.red_mot_compression(
+            self.red_mot_compression(                         #Compressing the red MOT by ramping down power, field ramping currently not active
                 bb_rmot_volt_1 = self.bb_rmot_coil_1_voltage,
                 bb_rmot_volt_2 = self.bb_rmot_coil_2_voltage,
                 sf_rmot_volt_1 = self.sf_rmot_coil_1_voltage,
@@ -429,34 +413,13 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
 
             delay(self.single_frequency_time*ms)
             
-
             self.seperate_probe(
                 tof = self.time_of_flight,
                 probe_duration = 0.2 * ms,
                 probe_frequency= 200 * MHz
             )
             
-
-
-
-            # self.seperate_probe(
-            #     tof = self.time_of_flight,
-            #     probe_duration = 5 * ms,
-            #     probe_frequency= 200 * MHz
-            # )
-
-
-            
-
-
-
-
-
-
-
-
-
-            delay(100*ms)
+            delay(10*ms)
 
 
 

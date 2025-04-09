@@ -3,8 +3,7 @@ from artiq.coredevice.ttl import TTLOut
 from numpy import int64
 from artiq.coredevice import ad9910
 
-import numpy as np
-
+import numpy as np 
 
 class BlueMOT_Loadingtime(EnvExperiment):
     def build(self):
