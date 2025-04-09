@@ -483,6 +483,65 @@ class atom_servo(EnvExperiment):
 
 
 
+                        #process the 3 pulses
+            ground_state = data[:,0] - data[:,3]
+            excited_state = data[:,1] - data[:,3]
+                    
+            excitation_fraction = excited_state / (ground_state + excited_state)
+            excitation_fractions[i] = excitation_fraction
+                
+                #Should read PMT signal from here
+        plt.plot(frequency_scan_values, excitation_fractions)        #plot of all the excitation fractions
+        resonance_peak_frequency = np.argmax(excitation_fractions)
+        print("Clock transition frequency found at: " + resonance_peak_frequency)      
+                
+                
+        if self.lock_to_transition == False:  
+            break
+        else: 
+                """Generate the Thue-Morse sequence up to index n."""
+            n = 2628288                                                # How many seconds there are in a month
+            thue_morse = [0]
+            while len(thue_morse) <= n:
+                thue_morse += [1 - bit for bit in thue_morse] 
+            clock_frequency = resonance_peak_frequency
+            feedback_aom = 
+            while 1:
+                
+                if thue_morse == 0:
+                    f_low = resonance_peak_frequency - (self.rabi_linewidth/2)
+                    ex_fraction_low = clock_spectroscopy(f_low)                   #Run Clock spectroscopy sequence at this frequency
+                         
+                    
+                else if thue_morse == 1:
+                    f_high = resonance_peak_frequency + (self.rabi_linewidth/2)
+                    ex_fraction_high = clock_spectroscopy.run(f_high)    #Run 1 experimental cycle with this as the clock frquency
+                    #Run Clock spectroscopy sequence on high-side
+                
+                
+                if count % 2 == 0:              # Every other cycle generate correction
+                    #Calculate error signal and then make correction
+                    error_signal = ex_fraction_high - ex_fraction_low
+                    
+                    frequency_correction = (self.gain_1/(0.8*self.contrast*self.rabi_pulse_duration)) * error_signal   # This is the first servo loop
+                    feedback_aom += frequency_correction
+                    atom_lock_aom.set(frequency= )
+                    
+                    
+                    #write to text file
+                    
+                count =+ 1
+            
+            #Setup thue-morse sequence with very large number of values so we run indefinitely
+            #step to one side of the transistion, perfom spectroscopy.
+            
+            
+                
+#To get the actual lock,                 
+                
+                
+          
+            
             
 
 
