@@ -59,7 +59,7 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.setattr_argument("time_of_flight", NumberValue(default=30))
             
             
-       @kernel
+    @kernel
     def initialise(self):
         
         # Initialize the modules
@@ -143,7 +143,7 @@ class BlueMOT_Loadingtime(EnvExperiment):
     def Sampler(self):
         
         self.core.reset()
-        self.core.break_realtime()                   #timebreak
+        self.core.break_realtime()                  
 
         delay(200*ms)
 
@@ -152,17 +152,21 @@ class BlueMOT_Loadingtime(EnvExperiment):
         sampling_period = 1/self.sample_rate
 
         with parallel:
-            with sequential 
-            for i in range(int64(self.Number_of_pulse)):
+            with sequential:
+              for i in range(int64(self.Number_of_pulse)):
                 self.ttl.pulse(self.Pulse_width * ms)
                 delay(sampling_period * s)
+            with sequential:
+                for j in range(num_samples):
+                    self.sampler.sample(samples[j])
+                    delay(sampling_period * s)
         
         delay(200*ms)
 
         sample2 = [i[0] for i in samples]
         self.set_dataset("samples", sample2, broadcast = True, archive = True)
 
-        print(sampling completed)
+        print("sampling completed")
         
     @kernel 
     def run(self):
