@@ -51,20 +51,20 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         self.setattr_argument("cycles", NumberValue(default=1))
         self.setattr_argument("blue_mot_loading_time", NumberValue(default=2000))
         self.setattr_argument("blue_mot_compression_time", NumberValue(default=20))
-        self.setattr_argument("blue_mot_cooling_time", NumberValue(default=30))
+        self.setattr_argument("blue_mot_cooling_time", NumberValue(default=60))
         self.setattr_argument("broadband_red_mot_time", NumberValue(default=15))
         self.setattr_argument("red_mot_compression_time", NumberValue(default=10))
-        self.setattr_argument("single_frequency_time", NumberValue(default=15))
+        self.setattr_argument("single_frequency_time", NumberValue(default=20))
         self.setattr_argument("time_of_flight", NumberValue(default=40))
 
         self.setattr_argument("blue_mot_coil_1_voltage", NumberValue(default=8.0))
         self.setattr_argument("blue_mot_coil_2_voltage", NumberValue(default=7.9))
         self.setattr_argument("compressed_blue_mot_coil_1_voltage", NumberValue(default=8.55))
-        self.setattr_argument("compressed_blue_mot_coil_2_voltage", NumberValue(default=8.48))
-        self.setattr_argument("bb_rmot_coil_1_voltage", NumberValue(default=5.5))
-        self.setattr_argument("bb_rmot_coil_2_voltage", NumberValue(default=5.45))
-        self.setattr_argument("sf_rmot_coil_1_voltage", NumberValue(default=5.65))
-        self.setattr_argument("sf_rmot_coil_2_voltage", NumberValue(default=5.7))
+        self.setattr_argument("compressed_blue_mot_coil_2_voltage", NumberValue(default=8.45))
+        self.setattr_argument("bb_rmot_coil_1_voltage", NumberValue(default=5.3))
+        self.setattr_argument("bb_rmot_coil_2_voltage", NumberValue(default=5.2))
+        self.setattr_argument("sf_rmot_coil_1_voltage", NumberValue(default=5.7))
+        self.setattr_argument("sf_rmot_coil_2_voltage", NumberValue(default=5.6))
         self.setattr_argument("sf_frequency", NumberValue(default=80.92))
 
     @kernel
@@ -355,16 +355,51 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
             delay(10*ms)
 
     @kernel
-    def pmt_capture(self,sampling_duration,sampling_rate):
+    def pmt_capture(self,sampling_duration,sampling_rate,tof):
         self.core.break_realtime()
-
-        samples = [[0.0 for i in range(8)] for i in range(num_samples)]
         sample_period = 1 / sampling_rate
         num_samples = int32(sampling_duration/sample_period)
+        samples = [[0.0 for i in range(8)] for i in range(num_samples)]
+    
+
 
         with parallel:
-            for j in range(num_samples):
-                 self.sampler.sample(samples[j])
+
+            with parallel:
+                self.red_mot_aom.sw.off()
+                self.blue_mot_aom.sw.off()
+                self.repump_shutter_679.off()
+                self.repump_shutter_707.off()
+                self.probe_shutter.on()
+
+            self.mot_coil_1.write_dac(0, 5.0)  
+            self.mot_coil_2.write_dac(1, 5.0)
+           
+            with parallel:
+                self.mot_coil_1.load()
+                self.mot_coil_2.load()
+
+            delay(((tof +3.9)*ms))
+
+            with parallel:
+                self.camera_trigger.pulse(1*ms)
+                self.probe_aom.set(frequency=200 * MHz, amplitude=0.17)
+                self.probe_aom.sw.on()
+                # for j in range(num_samples):
+                #     self.sampler.sample(samples[j])
+                #     delay(sample_period*s)
+
+                    
+            delay(0.2 * ms)
+                    
+            with parallel:
+                self.probe_shutter.off()
+                self.camera_shutter.off()    #Camera shutter takes 26ms to open so we will open it here
+                self.probe_aom.set(frequency=0*MHz, amplitude=0.00)
+                self.probe_aom.sw.off()
+
+            delay(10*ms)
+
          
         samples_ch0 = [i[0] for i in samples]
         self.set_dataset("samples", samples_ch0, broadcast=True, archive=True)
@@ -434,18 +469,21 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
 
             delay(self.single_frequency_time*ms)
 
-            self.pmt_capture(
-                sampling_duration = 0.5,
-                sampling_rate= 1000
-            )
+
+
+            # self.pmt_capture(
+            #     sampling_duration = 0.002,
+            #     sampling_rate= 200,
+            #     tof =self.time_of_flight
+            # )
             
             self.seperate_probe(
                 tof = self.time_of_flight,
                 probe_duration = 0.2 ,
                 probe_frequency= 200 * MHz
             )
-  
-            delay(20*ms)
+
+            delay(100*ms)
 
 
 
