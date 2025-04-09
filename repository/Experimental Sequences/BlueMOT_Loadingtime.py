@@ -1,5 +1,6 @@
 from artiq.experiment import *
 from artiq.coredevice.ttl import TTLOut
+from artiq.coredevice.sampler import Sampler 
 from numpy import int64
 from artiq.coredevice import ad9910
 
@@ -7,8 +8,17 @@ import numpy as np
 
 class BlueMOT_Loadingtime(EnvExperiment):
     def build(self):
+
+        #sampler
         self.setattr_device("core")
-        self.setattr_device("sampler0")
+        self.sampler:Sampler = self.get_device("sampler0")
+
+        self.setattr_argument("sample_rate", NumberValue())
+        self.setattr_argument("sample_number", NumberValue())
+
+        self.setattr_argument("Number_of_pulse", NumberValue())
+        self.setattr_argument("Pulse_width", NumberValue())
+        self.setattr_argument("Time_between_pulse", NumberValue())
         
         #Assign all channels
               #TTLs
@@ -49,7 +59,7 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.setattr_argument("time_of_flight", NumberValue(default=30))
             
             
- @kernel
+    @kernel
     def initialise(self):
         
         # Initialize the modules
@@ -118,27 +128,40 @@ class BlueMOT_Loadingtime(EnvExperiment):
 
             print("Blue On")
             # self.blue_mot_aom.sw.off()
+    
+    @rpc
+    def save_data(self, filename, data):
+        current_time = datetime.datetime.now()
+        current_time = str(current_time.day) + '-' + str(current_time.month) + '-' + str(current_time.year) + '_' + str(current_time.hour) + '-' + str(current_time.minute) + '-' + str(current_time.second)
+        filenameplusdate = current_time + filename
+        np.savetxt(filenameplusdate, data)
+
+    
     @kernel
     def Sampler(self):
         
+        self.core.reset()
         self.core.break_realtime()                   #timebreak
-        n_samples = 2000
-        self.set_dataset("samples",np.full(n_samples,np.nan), broadcast = True)        #creates data set 
 
-        n_channels = 1
-    
-        self.core.break_realtime()
-    
-        for i in range(n_channels):               
-           self.sampler0.set_gain_mu(7-i,0)          #sets channels gain to 0db
+        delay(200*ms)
 
-        smp = [0]*n_channels   
+        n_samples = int32(self.sample_number)
+        samples =[0.0 for i in range(8) for i in range(num_samples)]
+        sampling_period = 1/self.sample_rate
 
-        for n in range(n_samples):
-            delay(90*us)
-            self.sampler0.sample_mu(smp)          #runs sampler and saves to list 
-            self.mutate_dataset("samples",n,smp[0])        
+        with parallel:
+            with sequential 
+            for i in range(int64(self.Number_of_pulse)):
+                self.ttl.pulse(self.Pulse_width * ms)
+                delay(sampling_period * s)
+        
+        delay(200*ms)
 
+        sample2 = [i[0] for i in samples]
+        self.set_dataset("samples", sample2, broadcast = True, archive = True)
+
+        print(sampling completed)
+        
     @kernel 
     def run(self):
      
