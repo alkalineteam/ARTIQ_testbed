@@ -355,48 +355,47 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
             delay(10*ms)
 
     @kernel
-    def pmt_capture(self,sampling_duration,sampling_rate,tof):
+    def pmt_capture(self,sampling_duration,sampling_rate,tof):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
         self.core.break_realtime()
         sample_period = 1 / sampling_rate
         num_samples = int32(sampling_duration/sample_period)
         samples = [[0.0 for i in range(8)] for i in range(num_samples)]
     
-
-
         with parallel:
+            with sequential:
+                with parallel:
+                    self.red_mot_aom.sw.off()
+                    self.blue_mot_aom.sw.off()
+                    self.repump_shutter_679.off()
+                    self.repump_shutter_707.off()
+                    self.probe_shutter.on()
 
-            with parallel:
-                self.red_mot_aom.sw.off()
-                self.blue_mot_aom.sw.off()
-                self.repump_shutter_679.off()
-                self.repump_shutter_707.off()
-                self.probe_shutter.on()
-
-            self.mot_coil_1.write_dac(0, 5.0)  
-            self.mot_coil_2.write_dac(1, 5.0)
+                self.mot_coil_1.write_dac(0, 5.0)  
+                self.mot_coil_2.write_dac(1, 5.0)
            
-            with parallel:
-                self.mot_coil_1.load()
-                self.mot_coil_2.load()
+                with parallel:
+                    self.mot_coil_1.load()
+                    self.mot_coil_2.load()
 
-            delay(((tof +3.9)*ms))
+                delay(((tof +3.9)*ms))
 
-            with parallel:
-                self.camera_trigger.pulse(1*ms)
-                self.probe_aom.set(frequency=200 * MHz, amplitude=0.17)
-                self.probe_aom.sw.on()
-                # for j in range(num_samples):
-                #     self.sampler.sample(samples[j])
-                #     delay(sample_period*s)
-
+                with parallel:
+                    self.camera_trigger.pulse(1*ms)
+                    self.probe_aom.set(frequency=200 * MHz, amplitude=0.17)
+                    self.probe_aom.sw.on()
+    
+                delay(0.2 * ms)
                     
-            delay(0.2 * ms)
-                    
-            with parallel:
-                self.probe_shutter.off()
-                self.camera_shutter.off()    #Camera shutter takes 26ms to open so we will open it here
-                self.probe_aom.set(frequency=0*MHz, amplitude=0.00)
-                self.probe_aom.sw.off()
+                with parallel:
+                    self.probe_shutter.off()
+                    self.camera_shutter.off()    #Camera shutter takes 26ms to open so we will open it here
+                    self.probe_aom.set(frequency=0*MHz, amplitude=0.00)
+                    self.probe_aom.sw.off()
+
+            with sequential:
+                for j in range(num_samples):
+                    self.sampler.sample(samples[j])
+                    delay(sample_period*s)
 
             delay(10*ms)
 
