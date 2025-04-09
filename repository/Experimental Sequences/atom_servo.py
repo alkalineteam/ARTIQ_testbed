@@ -13,7 +13,7 @@ default_cfr2 = (
     | (1 << 24) # the amplitude is scaled by the ASF from the active profile (without this, the DDS outputs max. possible amplitude -> cracked AOM crystals)
 )
 
-class clock_resonance_search(EnvExperiment):
+class atom_servo(EnvExperiment):
 
     def build(self):
         self.setattr_device("core")
@@ -394,15 +394,15 @@ class clock_resonance_search(EnvExperiment):
         compress_bmot_amp = 0.0035
 
 
-        bb_rmot_coil_1_voltage = 5.5
-        bb_rmot_coil_2_voltage = 5.45
+        bb_rmot_coil_1_voltage = 5.3
+        bb_rmot_coil_2_voltage = 5.25
         sf_rmot_coil_1_voltage = 5.8
         sf_rmot_coil_2_voltage = 5.75
 
-        sf_frequency = 80.92 
+        sf_frequency = 80.92    
 
 
-        for j in range(int(scan_frequency_values)):          #This runs the actual sequence
+        for j in range(int(scan_frequency_values)):          #first we need to scan across the clock transition to acquire the lock
 
             delay(100*us)
 

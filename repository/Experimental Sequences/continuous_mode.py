@@ -3,7 +3,7 @@ from artiq.coredevice.core import Core
 from artiq.coredevice.ttl import TTLOut
 from numpy import int64
 
-class Everything_ON(EnvExperiment):
+class continuous_mode(EnvExperiment):
     def build(self):
         self.setattr_device("core")
         self.core:Core

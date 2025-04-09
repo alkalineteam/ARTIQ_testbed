@@ -6,7 +6,7 @@ from artiq.coredevice import ad9910
 
 import numpy as np 
 
-class BlueMOT_Loadingtime(EnvExperiment):
+class bluemot_loading_time(EnvExperiment):
     def build(self):
         self.setattr_device("core")
         self.sampler:Sampler = self.get_device("sampler0")
