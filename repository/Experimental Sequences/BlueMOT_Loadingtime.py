@@ -49,7 +49,7 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.setattr_argument("time_of_flight", NumberValue(default=30))
             
             
- @kernel
+    @kernel
     def initialise(self):
         
         # Initialize the modules
@@ -95,6 +95,8 @@ class BlueMOT_Loadingtime(EnvExperiment):
 
     def blue_mot_loading(self):               #Loading the Atoms into the Blue MOT
          # blue_amp = 0.08
+
+            delay(10*ms)
             self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
             self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
             self.probe_aom.set(frequency= 200 * MHz, amplitude=0.18)
@@ -120,7 +122,7 @@ class BlueMOT_Loadingtime(EnvExperiment):
             # self.blue_mot_aom.sw.off()
     @kernel
     def Sampler(self):
-        
+
         self.core.break_realtime()                   #timebreak
         n_samples = 2000
         self.set_dataset("samples",np.full(n_samples,np.nan), broadcast = True)        #creates data set 
@@ -135,17 +137,22 @@ class BlueMOT_Loadingtime(EnvExperiment):
         smp = [0]*n_channels   
 
         for n in range(n_samples):
-            delay(90*us)
             self.sampler0.sample_mu(smp)          #runs sampler and saves to list 
             self.mutate_dataset("samples",n,smp[0])        
+            delay(90*us)
 
     @kernel 
     def run(self):
-     
-        for loading_time in range(50, 2001, 50):  # Loading time ranges from 50 to 1000ms in increments of 50
 
+
+        self.initialise()
+        for loading_time in range(50, 2001, 50):  # Loading time ranges from 50 to 1000ms in increments of 50
+            
+            delay(100*ms)
 
             for j in range(10):      #Runs 10 times per cooling time
+
+                delay(100*ms)
                 
                 ################ Blue MOT Loading ##########################
                 self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
@@ -164,11 +171,15 @@ class BlueMOT_Loadingtime(EnvExperiment):
                 with parallel:
                     self.mot_coil_1.load()
                     self.mot_coil_2.load()
+
+
+                with parallel: 
                     self.blue_mot_shutter.on()
                     self.probe_shutter.off()
                     self.zeeman_slower_shutter.on()
                     self.repump_shutter_707.on()
                     self.repump_shutter_679.on()
+
 
                 delay(loading_time*ms)
                 # sample here
