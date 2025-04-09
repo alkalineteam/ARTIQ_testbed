@@ -55,14 +55,15 @@ class BlueMOT_Loadingtime(EnvExperiment):
         
         # Initialize the modules
       #  self.camera_shutter.output()
-        self.camera_trigger.output()
+        #self.camera_trigger.output()
+        self.sampler0.init()   
         self.blue_mot_shutter.output()
       #  self.red_mot_shutter.output()
         self.zeeman_slower_shutter.output()
         self.repump_shutter_707.output()
         self.repump_shutter_679.output()
         self.probe_shutter.output()
-        self.clock_shutter.output()
+        #self.clock_shutter.output()
      #   self.pmt_shutter.output()
         self.mot_coil_1.init()
         self.mot_coil_2.init()
@@ -72,15 +73,15 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.zeeman_slower_aom.init()
         self.probe_aom.cpld.init()
         self.probe_aom.init()
-        self.red_mot_aom.cpld.init()
-        self.red_mot_aom.init()
-        self.lattice_aom.cpld.init()
-        self.lattice_aom.init()
+        #self.red_mot_aom.cpld.init()
+        #self.red_mot_aom.init()
+        #self.lattice_aom.cpld.init()
+       # self.lattice_aom.init()
 
         # Set the RF channels ON
         self.blue_mot_aom.sw.on()
         self.zeeman_slower_aom.sw.on()
-        self.red_mot_aom.sw.on()
+       # self.red_mot_aom.sw.on()
         self.probe_aom.sw.on()
        # self.lattice_aom.sw.on()
 
@@ -88,7 +89,7 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.blue_mot_aom.set_att(0.0)
         self.zeeman_slower_aom.set_att(0.0)
         self.probe_aom.set_att(0.0)
-        self.red_mot_aom.set_att(0.0)
+        #self.red_mot_aom.set_att(0.0)
 
         #Set the profiles for 689 modulation and single frequency
         delay(500*us)
@@ -120,24 +121,24 @@ class BlueMOT_Loadingtime(EnvExperiment):
             # self.blue_mot_aom.sw.off()
     @kernel
     def Sampler(self):
+        
         self.core.break_realtime()                   #timebreak
-        self.sampler0.init()                  #Initilises sampler
         n_samples = 2000
-        self.set_dataset("samples",np.full(n_samples,np.nan), broadcast = true)        #creates data set 
+        self.set_dataset("samples",np.full(n_samples,np.nan), broadcast = True)        #creates data set 
 
         n_channels = 1
     
         self.core.break_realtime()
     
-        for i in range (n_channels):               
+        for i in range(n_channels):               
            self.sampler0.set_gain_mu(7-i,0)          #sets channels gain to 0db
 
-           smp = [0]*n_channels   
+        smp = [0]*n_channels   
 
         for n in range(n_samples):
             delay(90*us)
-        self.sampler0.sample_mu(smp)          #runs sampler and saves to list 
-        self.mutate_dataset("samples",n,smp[0])        
+            self.sampler0.sample_mu(smp)          #runs sampler and saves to list 
+            self.mutate_dataset("samples",n,smp[0])        
 
     @kernel 
     def run(self):
