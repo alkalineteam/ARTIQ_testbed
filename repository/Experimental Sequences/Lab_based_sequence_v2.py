@@ -26,10 +26,11 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         self.camera_trigger:TTLOut=self.get_device("ttl8")
         self.clock_shutter:TTLOut=self.get_device("ttl9")
         self.repump_shutter_679:TTLOut=self.get_device("ttl10")
+        self.camera_shutter:TTLOut=self.get_device("ttl11")   
 
         # self.pmt_shutter:TTLOut=self.get_device("ttl10")
-        # self.camera_trigger:TTLOut=self.get_device("ttl11")
-        # self.camera_shutter:TTLOut=self.get_device("ttl12")        
+
+     
         #AD9910
         self.red_mot_aom = self.get_device("urukul0_ch0")
         self.blue_mot_aom = self.get_device("urukul0_ch1")
@@ -71,7 +72,7 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         delay(1000*ms)
 
         # Initialize the modules
-        #  self.camera_shutter.output()
+        self.camera_shutter.output()
         self.camera_trigger.output()
         self.blue_mot_shutter.output()
         #  self.red_mot_shutter.output()
@@ -271,16 +272,16 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
         
 
         for i in range(int64(steps_com)):
-            # voltage_1 = bb_rmot_volt_1 + ((i+1) * volt_1_steps)
-            # voltage_2 = bb_rmot_volt_2 + ((i+1) * volt_2_steps)
+            voltage_1 = bb_rmot_volt_1 + ((i+1) * volt_1_steps)
+            voltage_2 = bb_rmot_volt_2 + ((i+1) * volt_2_steps)
             amp = bb_rmot_amp - ((i+1) * amp_steps)
 
-            # self.mot_coil_1.write_dac(0, voltage_1)
-            # self.mot_coil_2.write_dac(1, voltage_2)
+            self.mot_coil_1.write_dac(0, voltage_1)
+            self.mot_coil_2.write_dac(1, voltage_2)
 
             with parallel:
-                # self.mot_coil_1.load()
-                # self.mot_coil_2.load()
+                self.mot_coil_1.load()
+                self.mot_coil_2.load()
                 self.red_mot_aom.set(frequency = frequency * MHz, amplitude = amp)
             
             delay(t_com*ms)
@@ -326,8 +327,8 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
                 self.repump_shutter_707.off()
                 self.probe_shutter.on()
 
-            self.mot_coil_1.write_dac(0, 4.051)  
-            self.mot_coil_2.write_dac(1, 4.088)
+            self.mot_coil_1.write_dac(0, 5.0)  
+            self.mot_coil_2.write_dac(1, 5.0)
            
             with parallel:
                 self.mot_coil_1.load()
@@ -340,10 +341,11 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
                     self.probe_aom.set(frequency=probe_frequency, amplitude=0.17)
                     self.probe_aom.sw.on()
                     
-            delay(probe_duration)
+            delay(probe_duration * ms)
                     
             with parallel:
                 self.probe_shutter.off()
+                self.camera_shutter.off()    #Camera shutter takes 26ms to open so we will open it here
                 self.probe_aom.set(frequency=probe_frequency, amplitude=0.00)
                 self.probe_aom.sw.off()
 
@@ -394,6 +396,8 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
                 rmot_voltage_2 = self.bb_rmot_coil_2_voltage
             )
 
+            self.camera_shutter.on()    #Camera shutter takes 26ms to open so we will open it here
+
             delay(self.broadband_red_mot_time*ms)
 
             self.red_modulation_off(                   #switch to single frequency
@@ -415,11 +419,11 @@ class Lab_based_Clock_Sequence_v2(EnvExperiment):
             
             self.seperate_probe(
                 tof = self.time_of_flight,
-                probe_duration = 0.2 * ms,
+                probe_duration = 0.2 ,
                 probe_frequency= 200 * MHz
             )
-            
-            delay(10*ms)
+  
+            delay(20*ms)
 
 
 
