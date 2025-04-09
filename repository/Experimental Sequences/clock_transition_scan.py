@@ -428,7 +428,7 @@ class clock_transition_scan(EnvExperiment):
                 compress_bmot_volt_1 = compressed_blue_mot_coil_1_voltage,
                 compress_bmot_volt_2 = compressed_blue_mot_coil_2_voltage,
                 bmot_amp = bmot_amp,
-                compress_bmot_amp = compress_bmot_amp
+                compress_bmot_amp = compress_bmot_amp,
                 compression_time = bmot_compression_time
             )
 
@@ -462,9 +462,9 @@ class clock_transition_scan(EnvExperiment):
             
 
             self.clock_spectroscopy(
-                frequency = scan_frequency_values[j]
-                pulse_time = self.rabi_pulse_duration
-                I = self.clock_intensity
+                frequency = scan_frequency_values[j],
+                pulse_time = self.rabi_pulse_duration,
+                I = self.clock_intensity,
                 B = self.bias_field_current
 
             )
