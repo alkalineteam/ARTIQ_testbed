@@ -13,12 +13,12 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.setattr_device("core")
         self.sampler:Sampler = self.get_device("sampler0")
 
-        self.setattr_argument("sample_rate", NumberValue())
-        self.setattr_argument("sample_number", NumberValue())
+        self.setattr_argument("sample_rate", NumberValue(default = 100))
+        self.setattr_argument("sample_number", NumberValue(default = 100))
 
-        self.setattr_argument("Number_of_pulse", NumberValue())
-        self.setattr_argument("Pulse_width", NumberValue())
-        self.setattr_argument("Time_between_pulse", NumberValue())
+        self.setattr_argument("Number_of_pulse", NumberValue(default = 100))
+        self.setattr_argument("Pulse_width", NumberValue(default = 100))
+        self.setattr_argument("Time_between_pulse", NumberValue(default = 10 * ms))
         
         #Assign all channels
               #TTLs
