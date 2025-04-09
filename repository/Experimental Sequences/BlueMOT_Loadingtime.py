@@ -1,12 +1,24 @@
 from artiq.experiment import *
 from artiq.coredevice.ttl import TTLOut
+from artiq.coredevice.sampler import Sampler 
 from numpy import int64
 from artiq.coredevice import ad9910
 
+import numpy as np 
+
 class BlueMOT_Loadingtime(EnvExperiment):
     def build(self):
+
+        #sampler
         self.setattr_device("core")
-        self.setattr_device("sampler0")
+        self.sampler:Sampler = self.get_device("sampler0")
+
+        self.setattr_argument("sample_rate", NumberValue())
+        self.setattr_argument("sample_number", NumberValue())
+
+        self.setattr_argument("Number_of_pulse", NumberValue())
+        self.setattr_argument("Pulse_width", NumberValue())
+        self.setattr_argument("Time_between_pulse", NumberValue())
         
         #Assign all channels
               #TTLs
@@ -52,14 +64,15 @@ class BlueMOT_Loadingtime(EnvExperiment):
         
         # Initialize the modules
       #  self.camera_shutter.output()
-        self.camera_trigger.output()
+        #self.camera_trigger.output()
+        self.sampler0.init()   
         self.blue_mot_shutter.output()
       #  self.red_mot_shutter.output()
         self.zeeman_slower_shutter.output()
         self.repump_shutter_707.output()
         self.repump_shutter_679.output()
         self.probe_shutter.output()
-        self.clock_shutter.output()
+        #self.clock_shutter.output()
      #   self.pmt_shutter.output()
         self.mot_coil_1.init()
         self.mot_coil_2.init()
@@ -69,15 +82,15 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.zeeman_slower_aom.init()
         self.probe_aom.cpld.init()
         self.probe_aom.init()
-        self.red_mot_aom.cpld.init()
-        self.red_mot_aom.init()
-        self.lattice_aom.cpld.init()
-        self.lattice_aom.init()
+        #self.red_mot_aom.cpld.init()
+        #self.red_mot_aom.init()
+        #self.lattice_aom.cpld.init()
+       # self.lattice_aom.init()
 
         # Set the RF channels ON
         self.blue_mot_aom.sw.on()
         self.zeeman_slower_aom.sw.on()
-        self.red_mot_aom.sw.on()
+       # self.red_mot_aom.sw.on()
         self.probe_aom.sw.on()
        # self.lattice_aom.sw.on()
 
@@ -85,13 +98,15 @@ class BlueMOT_Loadingtime(EnvExperiment):
         self.blue_mot_aom.set_att(0.0)
         self.zeeman_slower_aom.set_att(0.0)
         self.probe_aom.set_att(0.0)
-        self.red_mot_aom.set_att(0.0)
+        #self.red_mot_aom.set_att(0.0)
 
         #Set the profiles for 689 modulation and single frequency
         delay(500*us)
 
     def blue_mot_loading(self):               #Loading the Atoms into the Blue MOT
          # blue_amp = 0.08
+
+            delay(10*ms)
             self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
             self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
             self.probe_aom.set(frequency= 200 * MHz, amplitude=0.18)
@@ -115,34 +130,56 @@ class BlueMOT_Loadingtime(EnvExperiment):
 
             print("Blue On")
             # self.blue_mot_aom.sw.off()
+    
+    @rpc
+    def save_data(self, filename, data):
+        current_time = datetime.datetime.now()
+        current_time = str(current_time.day) + '-' + str(current_time.month) + '-' + str(current_time.year) + '_' + str(current_time.hour) + '-' + str(current_time.minute) + '-' + str(current_time.second)
+        filenameplusdate = current_time + filename
+        np.savetxt(filenameplusdate, data)
+
+    
     @kernel
     def Sampler(self):
-        self.core.break_realtime()                   #timebreak
-        self.sampler0.init()                  #Initilises sampler
-        n_samples = 2000
-        self.set_dataset("samples",np.full(n_samples,np.nan), broadcast = true)        #creates data set 
+        
+        self.core.reset()
+        self.core.break_realtime()                  
 
-        n_channels = 1
-    
-        self.core.break_realtime()
-    
-        for i in range (n_channels):               
-           self.sampler0.set_gain_mu(7-i,0)          #sets channels gain to 0db
+        delay(200*ms)
 
-           smp = [0]*n_channels   
+        n_samples = int32(self.sample_number)
+        samples =[0.0 for i in range(8) for i in range(num_samples)]
+        sampling_period = 1/self.sample_rate
 
-        for n in range(n_samples):
-            delay(90*us)
-        self.sampler0.sample_mu(smp)          #runs sampler and saves to list 
-        self.mutate_dataset("samples",n,smp[0])        
+        with parallel:
+            with sequential:
+              for i in range(int64(self.Number_of_pulse)):
+                self.ttl.pulse(self.Pulse_width * ms)
+                delay(sampling_period * s)
+            with sequential:
+                for j in range(num_samples):
+                    self.sampler.sample(samples[j])
+                    delay(sampling_period * s)
+        
+        delay(200*ms)
 
+        sample2 = [i[0] for i in samples]
+        self.set_dataset("samples", sample2, broadcast = True, archive = True)
+
+        print("sampling completed")
+        
     @kernel 
     def run(self):
-     
-        for loading_time in range(50, 2001, 50):  # Loading time ranges from 50 to 1000ms in increments of 50
 
+
+        self.initialise()
+        for loading_time in range(50, 2001, 50):  # Loading time ranges from 50 to 1000ms in increments of 50
+            
+            delay(100*ms)
 
             for j in range(10):      #Runs 10 times per cooling time
+
+                delay(100*ms)
                 
                 ################ Blue MOT Loading ##########################
                 self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
@@ -161,11 +198,15 @@ class BlueMOT_Loadingtime(EnvExperiment):
                 with parallel:
                     self.mot_coil_1.load()
                     self.mot_coil_2.load()
+
+
+                with parallel: 
                     self.blue_mot_shutter.on()
                     self.probe_shutter.off()
                     self.zeeman_slower_shutter.on()
                     self.repump_shutter_707.on()
                     self.repump_shutter_679.on()
+
 
                 delay(loading_time*ms)
                 # sample here
