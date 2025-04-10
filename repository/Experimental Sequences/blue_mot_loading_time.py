@@ -9,10 +9,10 @@ import numpy as np
 class bluemot_loading_time(EnvExperiment):
     def build(self):
         self.setattr_device("core")
-        self.sampler:Sampler = self.get_device("sampler")
+        #self.sampler:Sampler = self.get_device("sampler")
         
         #Assign all channels
-              #TTLs
+        #TTLs
         self.blue_mot_shutter:TTLOut=self.get_device("ttl4")
         self.repump_shutter_707:TTLOut=self.get_device("ttl5")
         self.zeeman_slower_shutter:TTLOut=self.get_device("ttl6")
@@ -36,7 +36,7 @@ class bluemot_loading_time(EnvExperiment):
     def initialise(self):
         
         # Initialize the modules
-        self.sampler.init()   
+        #self.sampler.init()   
         self.blue_mot_shutter.output()
         self.zeeman_slower_shutter.output()
         self.repump_shutter_707.output()
@@ -68,6 +68,7 @@ class bluemot_loading_time(EnvExperiment):
     def run(self):
 
         self.initialise()
+        delay (1 * s)
         for loading_time in range(50, 2001, 50):  # Loading time ranges from 50 to 2000ms in increments of 50
             
             delay(100*ms)
@@ -96,24 +97,24 @@ class bluemot_loading_time(EnvExperiment):
 
 
                 with parallel: 
-                    self.blue_mot_shutter.off()
-                    self.probe_shutter.on()
-                    self.zeeman_slower_shutter.off()
-                    self.repump_shutter_707.off()
-                    self.repump_shutter_679.off()
+                    self.blue_mot_shutter.on()
+                    self.probe_shutter.off()
+                    self.zeeman_slower_shutter.on()
+                    self.repump_shutter_707.on()
+                    self.repump_shutter_679.on()
 
 
                 delay(loading_time*ms)
                 
                 #Hold atoms in blue MOT 
                 with parallel:
-                    self.blue_mot_shutter.on()
+                    self.blue_mot_shutter.off()
                 
                 delay(self.Holding_Time *ms)
                 
                 with parallel:
-                    self.blue_mot_shutter.off()
-                    self.repump_shutter_707.off()
+                    self.blue_mot_shutter.on()
+                    self.repump_shutter_707.on()
                 
                 #self.pmt_capture(                     #Runs sampler
                  #   sampling_duration = 0.002,
@@ -121,8 +122,8 @@ class bluemot_loading_time(EnvExperiment):
                    # )                     
 
                 with parallel:
-                    self.blue_mot_shutter.on()
-                    self.repump_shutter_707.on()
+                    self.blue_mot_shutter.off()
+                    self.repump_shutter_707.off()
 
                 delay(500 *ms)
          
