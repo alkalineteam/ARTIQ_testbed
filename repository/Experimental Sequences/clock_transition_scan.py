@@ -342,6 +342,8 @@ class clock_transition_scan(EnvExperiment):
 
     @kernel
     def clock_spectroscopy(self,aom_frequency,pulse_time,B):
+
+        self.red_mot_aom.sw.off()
          
          #Switch to Helmholtz
         self.mot_coil_1.write_dac(0, 5.0 - B)  
@@ -361,6 +363,7 @@ class clock_transition_scan(EnvExperiment):
         self.stepping_aom.set(frequency = aom_frequency * Hz)
         delay(pulse_time*ms)
         self.stepping_aom.set(frequency = 0 * Hz)
+        print(aom_frequency)
 
 
     @kernel
@@ -378,7 +381,6 @@ class clock_transition_scan(EnvExperiment):
                 ##########################Ground State###############################
                 
                 with parallel:
-                    self.red_mot_aom.sw.off()
                     self.blue_mot_aom.sw.off()
                     self.probe_shutter.on()
 
