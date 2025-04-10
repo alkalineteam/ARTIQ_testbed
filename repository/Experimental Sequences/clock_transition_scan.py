@@ -439,7 +439,7 @@ class clock_transition_scan(EnvExperiment):
 
 
         samples_ch0 = [i[0] for i in samples]
-        self.set_dataset("samples", samples_ch0, broadcast=True, archive=True)
+        self.set_dataset("normalised_detection", samples_ch0, broadcast=True, archive=True)
 
 
 
