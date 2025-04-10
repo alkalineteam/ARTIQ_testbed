@@ -19,6 +19,7 @@ class bluemot_loading_time(EnvExperiment):
         self.probe_shutter:TTLOut=self.get_device("ttl7")
         self.camera_trigger:TTLOut=self.get_device("ttl8")
         self.repump_shutter_679:TTLOut=self.get_device("ttl10")
+        self.camera_shutter:TTLOut=self.get_device("ttl11")  
         #AD9910
         self.blue_mot_aom = self.get_device("urukul0_ch1")
         self.zeeman_slower_aom = self.get_device("urukul0_ch2")
@@ -29,14 +30,7 @@ class bluemot_loading_time(EnvExperiment):
         
              
         self.setattr_argument("Cycles", NumberValue(default=10))
-        self.setattr_argument("Holding_Time", NumberValue(default=10))
-
-        self.setattr_argument("sample_rate", NumberValue(default = 100))
-        self.setattr_argument("sample_number", NumberValue(default = 100))
-        self.setattr_argument("Number_of_pulse", NumberValue(default = 100))
-        self.setattr_argument("Pulse_width", NumberValue(default = 100))
-        self.setattr_argument("Time_between_pulse", NumberValue(default = 10 * ms))
-            
+        self.setattr_argument("Holding_Time", NumberValue(default=10))        
             
     @kernel
     def initialise(self):
@@ -80,34 +74,54 @@ class bluemot_loading_time(EnvExperiment):
 
     
     @kernel
-    def Sampler(self):
-        
-        self.core.reset()
-        self.core.break_realtime()                  
-
-        delay(200*ms)
-
-        n_samples = int32(self.sample_number) 
-        samples =[0.0 for i in range(8) for i in range(num_samples)]
-        sampling_period = 1/self.sample_rate
-        
-        #Produces pulse
+    def pmt_capture(self,sampling_duration,sampling_rate,tof):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
+        self.core.break_realtime()
+        sample_period = 1 / sampling_rate
+        num_samples = int32(sampling_duration/sample_period)
+        samples = [[0.0 for i in range(8)] for i in range(num_samples)]
+    
         with parallel:
             with sequential:
-              for i in range(int64(self.Number_of_pulse)):
-                self.ttl.pulse(self.Pulse_width * ms)
-                delay(sampling_period * s)
+                with parallel:
+                    self.red_mot_aom.sw.off()
+                    self.blue_mot_aom.sw.off()
+                    self.repump_shutter_679.off()
+                    self.repump_shutter_707.off()
+                    self.probe_shutter.on()
+
+                self.mot_coil_1.write_dac(0, 5.0)  
+                self.mot_coil_2.write_dac(1, 5.0)
+           
+                with parallel:
+                    self.mot_coil_1.load()
+                    self.mot_coil_2.load()
+
+                delay(40 * ms)
+
+                with parallel:
+                    self.camera_trigger.pulse(1*ms)
+                    self.probe_aom.set(frequency=200 * MHz, amplitude=0.17)
+                    self.probe_aom.sw.on()
+    
+                delay(0.2 * ms)
+                    
+                with parallel:
+                    self.probe_shutter.off()
+                    self.camera_shutter.off()    #Camera shutter takes 26ms to open so we will open it here
+                    self.probe_aom.set(frequency=0*MHz, amplitude=0.00)
+                    self.probe_aom.sw.off()
+
             with sequential:
                 for j in range(num_samples):
                     self.sampler.sample(samples[j])
-                    delay(sampling_period * s)
-        
-        delay(200*ms)
+                    delay(sample_period*s)
 
-        sample2 = [i[0] for i in samples]
-        self.set_dataset("samples", sample2, broadcast = True, archive = True)   #Saves data to list
+            delay(10*ms)
 
-        print("sampling completed")
+         
+        samples_ch0 = [i[0] for i in samples]
+        self.set_dataset("samples", samples_ch0, broadcast=True, archive=True)
+
         
     @kernel 
     def run(self):
@@ -141,30 +155,34 @@ class bluemot_loading_time(EnvExperiment):
 
 
                 with parallel: 
-                    self.blue_mot_shutter.on()
-                    self.probe_shutter.off()
-                    self.zeeman_slower_shutter.on()
+                    self.blue_mot_shutter.off()
+                    self.probe_shutter.on()
+                    self.zeeman_slower_shutter.off()
                     self.repump_shutter_707.off()
-                    self.repump_shutter_679.on()
+                    self.repump_shutter_679.off()
 
 
                 delay(loading_time*ms)
                 
                 #Hold atoms in blue MOT 
                 with parallel:
-                    self.blue_mot_shutter.off()
+                    self.blue_mot_shutter.on()
                 
                 delay(self.Holding_Time *ms)
                 
                 with parallel:
-                    self.blue_mot_shutter.on()
-                    self.repump_shutter_707.on()
-                
-                self.Sampler() #Runs sampler
-
-                with parallel:
                     self.blue_mot_shutter.off()
                     self.repump_shutter_707.off()
+                
+                self.pmt_capture(                     #Runs sampler
+                    sampling_duration = 0.002,
+                    sampling_rate= 200
+                    )                     
+
+
+                with parallel:
+                    self.blue_mot_shutter.on()
+                    self.repump_shutter_707.on()
 
                 delay(500 *ms)
          
