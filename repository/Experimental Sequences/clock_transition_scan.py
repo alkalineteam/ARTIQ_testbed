@@ -362,6 +362,100 @@ class clock_transition_scan(EnvExperiment):
         self.stepping_aom.set(frequency = 0 * Hz, amplitude = I)
 
 
+    @kernel
+    def normalised_detection(self):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
+        # self.core.break_realtime()
+        sample_period = 1 / 10000      #10kHz sampling rate should give us enough data points
+        sampling_duration = 0.03       #30ms sampling time to allow for all the imaging slices to take place
+
+        num_samples = int32(sampling_duration/sample_period)
+        print(num_samples)
+        samples = [[0.0 for i in range(8)] for i in range(num_samples)]
+    
+        with parallel:
+    
+            with sequential:
+                ##########################Ground State###############################
+                
+                with parallel:
+                    self.red_mot_aom.sw.off()
+                    self.blue_mot_aom.sw.off()
+                    self.probe_shutter.on()
+
+                self.mot_coil_1.write_dac(0, 5.0)   #Set 0 field 
+                self.mot_coil_2.write_dac(1, 5.0)
+                with parallel:
+                    self.mot_coil_1.load()
+                    self.mot_coil_2.load()
+
+                delay(3.9*ms)     #wait for shutter to open
+
+                with parallel:
+                    self.camera_trigger.pulse(1*ms)
+                    self.probe_aom.set(frequency=200 * MHz, amplitude=0.17)
+                    self.probe_aom.sw.on()
+
+                delay(2 * ms)      #Ground state probe duration            
+                
+                with parallel:
+                    self.probe_shutter.off()
+                    self.probe_aom.set(frequency=0*MHz, amplitude=0.00)
+                    self.probe_aom.sw.off()
+
+                with parallel:
+                    self.repump_shutter_679.on()
+                    self.repump_shutter_707.on()
+                delay(6*ms)                         #repumping 
+                with parallel:
+                    self.repump_shutter_679.on()
+                    self.repump_shutter_707.on()
+
+                ###############################Excited State##################################
+
+                self.probe_shutter.on()
+                delay(3.9*ms) 
+
+                with parallel:
+                    self.probe_aom.set(frequency=200 * MHz, amplitude=0.17)
+                    self.probe_aom.sw.on()
+                delay(2*ms)            #Ground state probe duration
+                with parallel: 
+                    self.probe_aom.set(frequency=0*MHz, amplitude=0.00)
+                    self.probe_aom.sw.off()
+
+
+                ########################Background############################
+                delay(3*ms)                 
+                with parallel:
+                    self.probe_aom.set(frequency=200 * MHz, amplitude=0.17)
+                    self.probe_aom.sw.on()
+                delay(2*ms)            #Ground state probe duration
+                with parallel: 
+                    self.probe_aom.set(frequency=0*MHz, amplitude=0.00)
+                    self.probe_aom.sw.off()
+
+
+            with sequential:
+                for j in range(num_samples):
+                    self.sampler.sample(samples[j])
+                    delay(sample_period*s)
+
+        delay(sampling_duration*ms)
+
+
+        samples_ch0 = [i[0] for i in samples]
+        print(samples_ch0)
+        self.set_dataset("samples", samples_ch0, broadcast=True, archive=True)
+
+
+
+
+
+
+
+    
+
+
 
     @kernel
     def run(self):
@@ -469,12 +563,13 @@ class clock_transition_scan(EnvExperiment):
 
             )
 
-            self.seperate_probe(
-                tof = time_of_flight,
-                probe_duration = 0.2 * ms,
-                probe_frequency= 200 * MHz
-            )
+            # self.seperate_probe(
+            #     tof = time_of_flight,
+            #     probe_duration = 0.2 * ms,
+            #     probe_frequency= 200 * MHz
+            # )
 
+            self.normalised_detection()
 
 
 
