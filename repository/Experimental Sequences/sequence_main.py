@@ -5,7 +5,6 @@ from artiq.coredevice import ad9910
 from artiq.coredevice.sampler import Sampler
 import numpy as np
 
-from experiment_utils import utils 
 
 default_cfr1 = (
     (1 << 1)    # configures the serial data I/O pin (SDIO) as an input only pin; 3-wire serial programming mode

@@ -18,6 +18,7 @@ class clock_transition_scan(EnvExperiment):
     def build(self):
         self.setattr_device("core")
         
+        self.sampler:Sampler = self.get_device("sampler0")
         #Assign all channels
               #TTLs
         self.blue_mot_shutter:TTLOut=self.get_device("ttl4")
@@ -243,16 +244,16 @@ class clock_transition_scan(EnvExperiment):
             with parallel:
                 self.mot_coil_1.load()
                 self.mot_coil_2.load()
-            delay(self.broadband_red_mot_time*ms)
+     
 
     @kernel
-    def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2,frequency):
+    def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2,frequency,red_mot_compression_time):
 
         bb_rmot_amp=0.05
         compress_rmot_amp=0.009
 
-        steps_com = self.red_mot_compression_time 
-        t_com = self.red_mot_compression_time/steps_com
+        steps_com = red_mot_compression_time 
+        t_com = red_mot_compression_time/steps_com
         volt_1_steps = (sf_rmot_volt_1 - bb_rmot_volt_1)/steps_com
         volt_2_steps = (sf_rmot_volt_2 - bb_rmot_volt_2)/steps_com
 
@@ -340,7 +341,7 @@ class clock_transition_scan(EnvExperiment):
 
 
     @kernel
-    def clock_spectroscopy(self,aom_frequency,pulse_time,I,B):
+    def clock_spectroscopy(self,aom_frequency,pulse_time,B):
          
          #Switch to Helmholtz
         self.mot_coil_1.write_dac(0, 5.0 - B)  
@@ -350,26 +351,25 @@ class clock_transition_scan(EnvExperiment):
             self.mot_coil_1.load()
             self.mot_coil_2.load()
 
-        self.pmt_shutter.on()
-        self.camera_shutter.on()
+        # self.pmt_shutter.on()
+        # self.camera_shutter.on()
         self.clock_shutter.on()    
 
         delay(20*ms)  #wait for coils to switch
 
         #rabi spectroscopy pulse
-        self.stepping_aom.set(frequency = aom_frequency * Hz, amplitude = I)
+        self.stepping_aom.set(frequency = aom_frequency * Hz)
         delay(pulse_time*ms)
-        self.stepping_aom.set(frequency = 0 * Hz, amplitude = I)
+        self.stepping_aom.set(frequency = 0 * Hz)
 
 
     @kernel
     def normalised_detection(self):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
-        # self.core.break_realtime()
-        sample_period = 1 / 10000      #10kHz sampling rate should give us enough data points
-        sampling_duration = 0.03       #30ms sampling time to allow for all the imaging slices to take place
+        self.core.break_realtime()
+        sample_period = 1 / 20000      #10kHz sampling rate should give us enough data points
+        sampling_duration = 0.06      #30ms sampling time to allow for all the imaging slices to take place
 
         num_samples = int32(sampling_duration/sample_period)
-        print(num_samples)
         samples = [[0.0 for i in range(8)] for i in range(num_samples)]
     
         with parallel:
@@ -384,6 +384,7 @@ class clock_transition_scan(EnvExperiment):
 
                 self.mot_coil_1.write_dac(0, 5.0)   #Set 0 field 
                 self.mot_coil_2.write_dac(1, 5.0)
+
                 with parallel:
                     self.mot_coil_1.load()
                     self.mot_coil_2.load()
@@ -399,52 +400,45 @@ class clock_transition_scan(EnvExperiment):
                 
                 with parallel:
                     self.probe_shutter.off()
-                    self.probe_aom.set(frequency=0*MHz, amplitude=0.00)
                     self.probe_aom.sw.off()
 
+                delay(5*ms)                         #repumping 
+               
                 with parallel:
-                    self.repump_shutter_679.on()
-                    self.repump_shutter_707.on()
-                delay(6*ms)                         #repumping 
-                with parallel:
-                    self.repump_shutter_679.on()
-                    self.repump_shutter_707.on()
+                    self.repump_shutter_679.pulse(10*ms)
+                    self.repump_shutter_707.pulse(10*ms)
 
-                ###############################Excited State##################################
+                delay(10*ms)                         #repumping 
+
+                # ###############################Excited State##################################
 
                 self.probe_shutter.on()
                 delay(3.9*ms) 
 
-                with parallel:
-                    self.probe_aom.set(frequency=200 * MHz, amplitude=0.17)
-                    self.probe_aom.sw.on()
+                self.probe_aom.sw.on()
                 delay(2*ms)            #Ground state probe duration
-                with parallel: 
-                    self.probe_aom.set(frequency=0*MHz, amplitude=0.00)
-                    self.probe_aom.sw.off()
+                self.probe_aom.sw.off()
 
-
-                ########################Background############################
-                delay(3*ms)                 
-                with parallel:
-                    self.probe_aom.set(frequency=200 * MHz, amplitude=0.17)
-                    self.probe_aom.sw.on()
+                delay(20*ms)
+                #  ########################Background############################
+ 
+                self.probe_aom.sw.on()
                 delay(2*ms)            #Ground state probe duration
-                with parallel: 
-                    self.probe_aom.set(frequency=0*MHz, amplitude=0.00)
-                    self.probe_aom.sw.off()
+                self.probe_aom.sw.off()
+                self.probe_shutter.off()
 
-
+                delay(7*ms)
+                
             with sequential:
                 for j in range(num_samples):
                     self.sampler.sample(samples[j])
                     delay(sample_period*s)
+                
 
-        delay(sampling_duration*ms)
+        delay(sampling_duration*s)
 
 
         samples_ch0 = [i[0] for i in samples]
-        print(samples_ch0)
         self.set_dataset("samples", samples_ch0, broadcast=True, archive=True)
 
 
@@ -466,10 +460,13 @@ class clock_transition_scan(EnvExperiment):
 
         #Setup frequency scan parameters
 
-        scan_start = self.scan_center_frequency - (self.scan_range/2)
-        scan_end = self.scan_center_frequency - (self.scan_range/2)
-        scan_frequency_values = np.arange(scan_start,scan_end,self.scan_step_size)
-
+        scan_start = int32(self.scan_center_frequency_Hz - (self.scan_range_Hz/2))
+        print(scan_start)
+        scan_end =int32(self.scan_center_frequency_Hz + (self.scan_range_Hz/2))
+        print(scan_end)
+        scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
+        print(scan_frequency_values)
+        cycles = len(scan_frequency_values)
 
         #Sequence Parameters - Update these with optimised values
 
@@ -496,7 +493,7 @@ class clock_transition_scan(EnvExperiment):
         sf_frequency = 80.92 
 
 
-        for j in range(int(scan_frequency_values)):          #This runs the actual sequence
+        for j in range(int32(cycles)):          #This runs the actual sequence
 
             delay(100*us)
 
@@ -547,7 +544,8 @@ class clock_transition_scan(EnvExperiment):
                 bb_rmot_volt_2 = bb_rmot_coil_2_voltage,
                 sf_rmot_volt_1 = sf_rmot_coil_1_voltage,
                 sf_rmot_volt_2 = sf_rmot_coil_2_voltage,
-                frequency = sf_frequency
+                frequency = sf_frequency,
+                red_mot_compression_time=red_mot_compression_time
             )
 
             delay(red_mot_compression_time*ms)
@@ -556,9 +554,8 @@ class clock_transition_scan(EnvExperiment):
             
 
             self.clock_spectroscopy(
-                frequency = scan_frequency_values[j],
-                pulse_time = self.rabi_pulse_duration,
-                I = self.clock_intensity,
+                aom_frequency = scan_frequency_values[j],
+                pulse_time = self.rabi_pulse_duration_ms,
                 B = self.bias_field_current
 
             )
@@ -573,7 +570,7 @@ class clock_transition_scan(EnvExperiment):
 
 
 
-            delay(10*ms)
+            delay(200*ms)
 
 
 
