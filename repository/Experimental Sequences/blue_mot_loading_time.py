@@ -90,7 +90,7 @@ class bluemot_loading_time(EnvExperiment):
                 #voltage_2 = 8.0
                 #self.mot_coil_1.write_dac(0, voltage_1)
                 #self.mot_coil_2.write_dac(1, voltage_2)
-
+               
                 #with parallel:
                  #   self.mot_coil_1.load()
                   #  self.mot_coil_2.load()
@@ -101,7 +101,7 @@ class bluemot_loading_time(EnvExperiment):
                     self.probe_shutter.off()
                     self.zeeman_slower_shutter.on()
                     self.repump_shutter_707.on()
-                    #self.repump_shutter_679.on()
+                    self.repump_shutter_679.on()
 
 
                 delay(loading_time*ms)
