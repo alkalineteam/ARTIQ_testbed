@@ -585,17 +585,17 @@ class clock_transition_scan(EnvExperiment):
                 pulse_time = self.rabi_pulse_duration_ms,
             )
 
-            # self.seperate_probe(
-            #     tof = time_of_flight,
-            #     probe_duration = 0.2 * ms,
-            #     probe_frequency= 200 * MHz
-            # )
+            self.seperate_probe(
+                tof = time_of_flight,
+                probe_duration = 0.2 * ms,
+                probe_frequency= 200 * MHz
+            )
 
-            self.normalised_detection()
+            # self.normalised_detection()
 
 
 
-            delay(10*ms)
+            delay(50*ms)
 
  
 

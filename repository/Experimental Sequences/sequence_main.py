@@ -585,15 +585,15 @@ class sequence_main(EnvExperiment):
             # )
 
 
-                     #Switch to Helmholtz
-            self.mot_coil_1.write_dac(0, 2.0)  
-            self.mot_coil_2.write_dac(1, 8.0)
+            #          #Switch to Helmholtz
+            # self.mot_coil_1.write_dac(0, 2.0)  
+            # self.mot_coil_2.write_dac(1, 8.0)
         
-            with parallel:
-                self.mot_coil_1.load()
-                self.mot_coil_2.load()
+            # with parallel:
+            #     self.mot_coil_1.load()
+            #     self.mot_coil_2.load()
 
-            delay(50*ms)
+            # delay(50*ms)
 
 
 
