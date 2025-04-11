@@ -61,7 +61,9 @@ class continuous_mode(EnvExperiment):
 
         self.setattr_argument("clock_frequency", NumberValue(default = 85.0))
         self.setattr_argument("clock_attenuation_dB", NumberValue(default = 16))
-        
+
+        self.setattr_argument("coil_1_voltage", NumberValue(default = 7.9))
+        self.setattr_argument("coil_2_voltage", NumberValue(default = 8))
 
     @kernel
     def run(self):
@@ -108,8 +110,8 @@ class continuous_mode(EnvExperiment):
        
         
         if self.coils_off == False:
-            self.mot_coil_1.write_dac(0, 8.0)    
-            self.mot_coil_2.write_dac(1, 7.9)
+            self.mot_coil_1.write_dac(0, self.coil_1_voltage)    
+            self.mot_coil_2.write_dac(1, self.coil_2_voltage)
         else: 
             self.mot_coil_1.write_dac(0, 5.0)    
             self.mot_coil_2.write_dac(1, 5.0)

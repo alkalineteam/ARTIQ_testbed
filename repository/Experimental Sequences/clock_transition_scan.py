@@ -352,7 +352,7 @@ class clock_transition_scan(EnvExperiment):
         current_per_coil = ((bias_at_coil) / 2.0086) / 2   
 
         coil_1_voltage = current_per_coil + 5.0
-        coil_2_voltage = 5.0 - (current_per_coil * 0.94 )           #Scaled against coil 1
+        coil_2_voltage = 5.0 - (current_per_coil / 0.94 )           #Scaled against coil 1
 
         print(coil_1_voltage)
         print(coil_2_voltage)
@@ -595,7 +595,7 @@ class clock_transition_scan(EnvExperiment):
 
 
 
-            delay(200*ms)
+            delay(10*ms)
 
  
 

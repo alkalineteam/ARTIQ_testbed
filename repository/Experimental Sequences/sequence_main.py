@@ -603,7 +603,7 @@ class sequence_main(EnvExperiment):
             #     tof =self.time_of_flight
             # )
 
-            self.normalised_detection()
+            # self.normalised_detection()
             
             self.seperate_probe(
                 tof = self.time_of_flight,
