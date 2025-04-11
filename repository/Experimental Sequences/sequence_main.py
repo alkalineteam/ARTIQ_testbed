@@ -96,12 +96,17 @@ class sequence_main(EnvExperiment):
         self.red_mot_aom.init()
         self.lattice_aom.cpld.init()
         self.lattice_aom.init()
+        self.stepping_aom.cpld.init()
+        self.stepping_aom.init()
 
         self.sampler.init() 
 
         # Set the RF channels ON
+        self.stepping_aom.set(frequency = 85.5* MHz)
+        self.stepping_aom.set_att(16*dB)
         self.blue_mot_aom.sw.on()
         self.zeeman_slower_aom.sw.on()
+        self.stepping_aom.sw.on()
         # self.red_mot_aom.sw.on()
         self.probe_aom.sw.off()
         # self.lattice_aom.sw.on()
@@ -341,7 +346,7 @@ class sequence_main(EnvExperiment):
             delay(((tof +3.9)*ms))
 
             with parallel:
-                    self.camera_trigger.pulse(1*ms)
+                    self.camera_trigger.pulse(2*ms)
                     self.probe_aom.set(frequency=probe_frequency, amplitude=0.17)
                     self.probe_aom.sw.on()
                     
@@ -354,6 +359,24 @@ class sequence_main(EnvExperiment):
                 self.probe_aom.sw.off()
 
             delay(10*ms)
+
+
+    @kernel
+    def clock_spectroscopy(self,aom_frequency,pulse_time,B):
+         
+
+
+        # self.pmt_shutter.on()
+        # self.camera_shutter.on()
+        self.clock_shutter.on()    
+
+        delay(40*ms)  #wait for coils to switch
+
+        #rabi spectroscopy pulse
+        self.stepping_aom.set(frequency = aom_frequency * Hz)
+        delay(pulse_time*ms)
+        self.stepping_aom.set(frequency = 0 * Hz)
+
 
     @kernel
     def pmt_capture(self,sampling_duration,sampling_rate,tof):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
@@ -405,6 +428,86 @@ class sequence_main(EnvExperiment):
         samples_ch0 = [i[0] for i in samples]
         print(samples_ch0)
         self.set_dataset("samples", samples_ch0, broadcast=True, archive=True)
+
+
+    @kernel
+    def normalised_detection(self):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
+        self.core.break_realtime()
+        sample_period = 1 / 20000      #10kHz sampling rate should give us enough data points
+        sampling_duration = 0.06      #30ms sampling time to allow for all the imaging slices to take place
+
+        num_samples = int32(sampling_duration/sample_period)
+        samples = [[0.0 for i in range(8)] for i in range(num_samples)]
+    
+        with parallel:
+    
+            with sequential:
+                ##########################Ground State###############################
+                
+                with parallel:
+                    self.blue_mot_aom.sw.off()
+                    self.probe_shutter.on()
+
+                self.mot_coil_1.write_dac(0, 5.0)   #Set 0 field 
+                self.mot_coil_2.write_dac(1, 5.0)
+
+                with parallel:
+                    self.mot_coil_1.load()
+                    self.mot_coil_2.load()
+
+                delay(3.9*ms)     #wait for shutter to open
+
+                with parallel:
+                    self.camera_trigger.pulse(1*ms)
+                    self.probe_aom.set(frequency=200 * MHz, amplitude=0.17)
+                    self.probe_aom.sw.on()
+
+                delay(0.2 * ms)      #Ground state probe duration            
+                
+                with parallel:
+                    self.probe_shutter.off()
+                    self.probe_aom.sw.off()
+
+                delay(5*ms)                         #repumping 
+               
+                with parallel:
+                    self.repump_shutter_679.pulse(10*ms)
+                    self.repump_shutter_707.pulse(10*ms)
+
+                delay(10*ms)                         #repumping 
+
+                # ###############################Excited State##################################
+
+                self.probe_shutter.on()
+                delay(3.9*ms) 
+
+                self.probe_aom.sw.on()
+                delay(0.2*ms)            #Ground state probe duration
+                self.probe_aom.sw.off()
+
+                delay(20*ms)
+                #  ########################Background############################
+ 
+                self.probe_aom.sw.on()
+                delay(0.2*ms)            #Ground state probe duration
+                self.probe_aom.sw.off()
+                self.probe_shutter.off()
+
+                delay(7*ms)
+                
+            with sequential:
+                for j in range(num_samples):
+                    self.sampler.sample(samples[j])
+                    delay(sample_period*s)
+                
+
+        delay(sampling_duration*s)
+
+
+        samples_ch0 = [i[0] for i in samples]
+        self.set_dataset("normalised_detection", samples_ch0, broadcast=True, archive=True)
+
+
 
     @kernel
     def run(self):
@@ -471,19 +574,42 @@ class sequence_main(EnvExperiment):
 
             delay(self.single_frequency_time*ms)
 
+            self.red_mot_aom.sw.off()
 
 
-            self.pmt_capture(
-                sampling_duration = 0.2,
-                sampling_rate= 10000,
-                tof =self.time_of_flight
-            )
-            
-            # self.seperate_probe(
-            #     tof = self.time_of_flight,
-            #     probe_duration = 0.2 ,
-            #     probe_frequency= 200 * MHz
+            # self.clock_spectroscopy(
+            #     aom_frequency = 0*Hz,
+            #     pulse_time = 60*ms,
+            #     B = 3.0
+
             # )
+
+
+                     #Switch to Helmholtz
+            self.mot_coil_1.write_dac(0, 2.0)  
+            self.mot_coil_2.write_dac(1, 8.0)
+        
+            with parallel:
+                self.mot_coil_1.load()
+                self.mot_coil_2.load()
+
+            delay(50*ms)
+
+
+
+            # self.pmt_capture(
+            #     sampling_duration = 0.2,
+            #     sampling_rate= 10000,
+            #     tof =self.time_of_flight
+            # )
+
+            self.normalised_detection()
+            
+            self.seperate_probe(
+                tof = self.time_of_flight,
+                probe_duration = 0.2 ,
+                probe_frequency= 200 * MHz
+            )
 
             delay(100*ms)
 

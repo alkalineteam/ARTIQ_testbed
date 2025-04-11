@@ -1,7 +1,7 @@
 from artiq.experiment import *
 from artiq.coredevice.ttl import TTLOut
-from numpy import int64, int32
-import numpy as np
+from numpy import int64, int32, max
+import numpy as numpy
 from artiq.coredevice import ad9910
 
 default_cfr1 = (
@@ -342,6 +342,8 @@ class clock_transition_scan(EnvExperiment):
 
     @kernel
     def clock_spectroscopy(self,aom_frequency,pulse_time):
+       
+        self.red_mot_aom.sw.off()
 
         comp_field = 1.35 * 0.14    # comp current * scaling factor from measurement
 
@@ -374,6 +376,16 @@ class clock_transition_scan(EnvExperiment):
         delay(pulse_time*ms)
         self.stepping_aom.set(frequency = 0 * Hz)
 
+    @rpc
+    def excitation_fraction(self,data):
+        background = numpy.max(numpy.array(data[0:200]))
+        ground_state = (numpy.max(numpy.array(data[500:700])) )- background
+        excited_state = (numpy.max(numpy.array(data[900:1100]))) - background
+        excitation_fraction = excited_state / (ground_state + excited_state) - 0.5
+        print(excitation_fraction)
+
+
+
 
     @kernel
     def normalised_detection(self):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
@@ -390,7 +402,6 @@ class clock_transition_scan(EnvExperiment):
                 ##########################Ground State###############################
                 
                 with parallel:
-                    self.red_mot_aom.sw.off()
                     self.blue_mot_aom.sw.off()
                     self.probe_shutter.on()
 
@@ -454,30 +465,15 @@ class clock_transition_scan(EnvExperiment):
 
         self.set_dataset("normalised_detection", samples_ch0, broadcast=True, archive=True)
 
-        background_peak_vals = [value for value in samples_ch0[900:1100] if value > threshold ]
-        background = sum(background_peak_vals) /  len(background_peak_vals)
+        # background_peak_vals = [value for value in samples_ch0[900:1100] if value > threshold ]
+        # background = sum(background_peak_vals) /  len(background_peak_vals)
+
+        self.excitation_fraction(samples_ch0)
+     
 
 
-        threshold = 0.5
-        ground_state_peak_vals = [value for value in samples_ch0[0:200] if value > threshold ]
-        ground_state = abs((sum(ground_state_peak_vals) /  len(ground_state_peak_vals)) - background)
 
-        excited_state_peak_vals = [value for value in samples_ch0[500:700] if value > threshold ]
-        excited_state = abs((sum(excited_state_peak_vals) /  len(excited_state_peak_vals) - background))
-
-
-        excitation_fraction = excited_state / (ground_state + excited_state)
-        print (excitation_fraction)
         
-
-
-
-
-
-
-
-
-    
 
 
 
@@ -522,6 +518,7 @@ class clock_transition_scan(EnvExperiment):
 
         sf_frequency = 80.92 
 
+        
 
         for j in range(int32(cycles)):          #This runs the actual sequence
 
@@ -600,8 +597,7 @@ class clock_transition_scan(EnvExperiment):
 
             delay(200*ms)
 
-
-
+ 
 
             
 
