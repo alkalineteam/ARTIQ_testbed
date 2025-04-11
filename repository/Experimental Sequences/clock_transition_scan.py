@@ -52,7 +52,7 @@ class clock_transition_scan(EnvExperiment):
         self.setattr_argument("scan_step_size_Hz", NumberValue(default=1000 * Hz))
         self.setattr_argument("rabi_pulse_duration_ms", NumberValue(default= 60 * ms))
         self.setattr_argument("clock_intensity", NumberValue(default=0.05))
-        self.setattr_argument("bias_field_current", NumberValue(default=3.0))
+        self.setattr_argument("bias_field_mT", NumberValue(default=3.0))
         self.setattr_argument("blue_mot_loading_time", NumberValue(default=2000 * ms))
 
     @kernel
@@ -341,11 +341,23 @@ class clock_transition_scan(EnvExperiment):
 
 
     @kernel
-    def clock_spectroscopy(self,aom_frequency,pulse_time,B):
+    def clock_spectroscopy(self,aom_frequency,pulse_time):
+
+        comp_field = 1.35 * 0.14    # comp current * scaling factor from measurement
+
+        bias_at_coil = (self.bias_field_mT - comp_field)/ 0.914   #bias field dips in center of coils due to geometry, scaling factor provided by modelling field
+
+        current_per_coil = ((bias_at_coil) / 2.0086) / 2   
+
+        coil_1_voltage = current_per_coil + 5.0
+        coil_2_voltage = 5.0 - (current_per_coil * 0.94 )           #Scaled against coil 1
+
+        print(coil_1_voltage)
+        print(coil_2_voltage)
          
          #Switch to Helmholtz
-        self.mot_coil_1.write_dac(0, 5.0 - B)  
-        self.mot_coil_2.write_dac(1, 5.0 + B)
+        self.mot_coil_1.write_dac(0, coil_1_voltage)  
+        self.mot_coil_2.write_dac(1, coil_2_voltage)
         
         with parallel:
             self.mot_coil_1.load()
@@ -574,8 +586,6 @@ class clock_transition_scan(EnvExperiment):
             self.clock_spectroscopy(
                 aom_frequency = scan_frequency_values[j],
                 pulse_time = self.rabi_pulse_duration_ms,
-                B = self.bias_field_current
-
             )
 
             # self.seperate_probe(
