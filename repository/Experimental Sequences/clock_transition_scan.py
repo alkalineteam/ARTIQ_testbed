@@ -55,6 +55,8 @@ class clock_transition_scan(EnvExperiment):
         self.setattr_argument("bias_field_mT", NumberValue(default=3.0))
         self.setattr_argument("blue_mot_loading_time", NumberValue(default=2000 * ms))
 
+        self.excitation_fractions = []  #Excitation fractions list to append to
+
     @kernel
     def initialise_modules(self):
             
@@ -100,7 +102,7 @@ class clock_transition_scan(EnvExperiment):
         delay(100*ms)
 
     @kernel
-    def red_modulation_on(self,f_start,A_start,f_SWAP_start,f_SWAP_end,T_SWAP,A_SWAP):          #state = 1 for modulation ON, 0 for modulation OFF
+    def red_modulation_on(self,f_SWAP_start,f_SWAP_end,T_SWAP,A_SWAP):          #state = 1 for modulation ON, 0 for modulation OFF
 
         self.red_mot_aom.set_att(0.0)
 
@@ -159,7 +161,7 @@ class clock_transition_scan(EnvExperiment):
         self.red_mot_aom.cpld.io_update.pulse_mu(8)
 
     @kernel
-    def red_modulation_off(self,f_SF,A_SF):
+    def red_modulation_off(self,f_SF,A_SF):                                      #Switch to single frequency
 
         f_SF_ftw = self.red_mot_aom.frequency_to_ftw(f_SF)
         A_SF_mu = int32(round(A_SF * 0x3fff)) << 16
@@ -180,7 +182,7 @@ class clock_transition_scan(EnvExperiment):
         # self.red_mot_aom.set_att(19*dB)
 
     @kernel
-    def blue_mot_loading(self,bmot_voltage_1,bmot_voltage_2):
+    def blue_mot_loading(self,bmot_voltage_1,bmot_voltage_2):                  
         self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
         self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
 
@@ -245,7 +247,6 @@ class clock_transition_scan(EnvExperiment):
                 self.mot_coil_1.load()
                 self.mot_coil_2.load()
      
-
     @kernel
     def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2,frequency,red_mot_compression_time):
 
@@ -274,41 +275,9 @@ class clock_transition_scan(EnvExperiment):
                 self.red_mot_aom.set(frequency = frequency * MHz, amplitude = amp)
             
             delay(t_com*ms)
-
-    @kernel
-    def mot_as_probe(self,probe_duration):
-         
-        self.red_mot_aom.sw.off()
-        self.blue_mot_aom.sw.off()
-
-        self.repump_shutter_679.off()
-        self.repump_shutter_707.off()
-
-        self.mot_coil_1.write_dac(0, 4.051)
-        self.mot_coil_2.write_dac(1, 4.088)
-
-        with parallel:
-            self.mot_coil_1.load()
-            self.mot_coil_2.load()
-
-        delay(4*ms)
-
-        with parallel:
-                self.camera_trigger.pulse(1*ms)
-                self.blue_mot_aom.set(frequency=90 * MHz, amplitude=0.06)
-                self.blue_mot_aom.sw.on()
-                
-        delay(probe_duration)
-
-        self.blue_mot_aom.sw.off()
-
-        #set coil field to zero
-        #wait for probe shutter to open
-
-        delay(10*ms)
-         
+        
     @kernel 
-    def seperate_probe(self,tof,probe_duration,probe_frequency):
+    def seperate_probe(self,tof,probe_duration,probe_frequency):               #Only triggers the camera, and seperate probe
             with parallel:
                 self.red_mot_aom.sw.off()
                 self.blue_mot_aom.sw.off()
@@ -339,24 +308,18 @@ class clock_transition_scan(EnvExperiment):
 
             delay(10*ms)
 
-
     @kernel
-    def clock_spectroscopy(self,aom_frequency,pulse_time):
+    def clock_spectroscopy(self,aom_frequency,pulse_time):                     #Switch to Helmholtz field, wait, then generate Rabi Pulse
        
         self.red_mot_aom.sw.off()
 
         comp_field = 1.35 * 0.14    # comp current * scaling factor from measurement
-
         bias_at_coil = (self.bias_field_mT - comp_field)/ 0.914   #bias field dips in center of coils due to geometry, scaling factor provided by modelling field
-
         current_per_coil = ((bias_at_coil) / 2.0086) / 2   
 
         coil_1_voltage = current_per_coil + 5.0
         coil_2_voltage = 5.0 - (current_per_coil / 0.94 )           #Scaled against coil 1
-
-        print(coil_1_voltage)
-        print(coil_2_voltage)
-         
+       
          #Switch to Helmholtz
         self.mot_coil_1.write_dac(0, coil_1_voltage)  
         self.mot_coil_2.write_dac(1, coil_2_voltage)
@@ -375,20 +338,24 @@ class clock_transition_scan(EnvExperiment):
         self.stepping_aom.set(frequency = aom_frequency * Hz)
         delay(pulse_time*ms)
         self.stepping_aom.set(frequency = 0 * Hz)
-
+   
     @rpc
-    def excitation_fraction(self,data):
+    def excitation_fraction(self,data,j):                                    #Calulates the excitation fraction from the sampler data and writes it to list for analysis later
+
+        atom_scalar = 10000    #Scalar value to convert from Volts to Atom No, needs calibrating often
+
         background = numpy.max(numpy.array(data[0:200]))
-        ground_state = (numpy.max(numpy.array(data[500:700])) )- background
-        excited_state = (numpy.max(numpy.array(data[900:1100]))) - background
-        excitation_fraction = excited_state / (ground_state + excited_state) - 0.5
-        print(excitation_fraction)
+        ground_state = ((numpy.max(numpy.array(data[500:700])) )- background ) * atom_scalar
+        excited_state = ((numpy.max(numpy.array(data[900:1100]))) - background) *atom_scalar
 
+        excitation_fraction = excited_state / (ground_state + excited_state) 
 
+        self.excitation_fractions.append(self.scan_frequency_values[j],excitation_fraction,ground_state)
 
+        return
 
     @kernel
-    def normalised_detection(self):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
+    def normalised_detection(self,j):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
         self.core.break_realtime()
         sample_period = 1 / 20000      #10kHz sampling rate should give us enough data points
         sampling_duration = 0.06      #30ms sampling time to allow for all the imaging slices to take place
@@ -453,29 +420,17 @@ class clock_transition_scan(EnvExperiment):
                 delay(7*ms)
                 
             with sequential:
-                for j in range(num_samples):
-                    self.sampler.sample(samples[j])
+                for k in range(num_samples):
+                    self.sampler.sample(samples[k])
                     delay(sample_period*s)
                 
-
         delay(sampling_duration*s)
-
 
         samples_ch0 = [i[0] for i in samples]
 
-        self.set_dataset("normalised_detection", samples_ch0, broadcast=True, archive=True)
+        self.excitation_fraction(samples_ch0,j)
 
-        # background_peak_vals = [value for value in samples_ch0[900:1100] if value > threshold ]
-        # background = sum(background_peak_vals) /  len(background_peak_vals)
-
-        self.excitation_fraction(samples_ch0)
-     
-
-
-
-        
-
-
+        self.set_dataset("excitation_fracrion", self.excitation_fractions, broadcast=True, archive=True)
 
     @kernel
     def run(self):
@@ -485,7 +440,6 @@ class clock_transition_scan(EnvExperiment):
         self.initialise_modules()
 
         #Setup frequency scan parameters
-
         scan_start = int32(self.scan_center_frequency_Hz - (self.scan_range_Hz/2))
         print(scan_start)
         scan_end =int32(self.scan_center_frequency_Hz + (self.scan_range_Hz/2))
@@ -495,32 +449,26 @@ class clock_transition_scan(EnvExperiment):
         cycles = len(scan_frequency_values)
 
         #Sequence Parameters - Update these with optimised values
-
         bmot_compression_time = 20 
         blue_mot_cooling_time = 60 
         broadband_red_mot_time = 15
         red_mot_compression_time = 10
         single_frequency_time = 15
         time_of_flight = 0 
-        
         blue_mot_coil_1_voltage = 8.0
         blue_mot_coil_2_voltage = 7.9
         compressed_blue_mot_coil_1_voltage = 8.55
         compressed_blue_mot_coil_2_voltage = 8.48
         bmot_amp = 0.06
         compress_bmot_amp = 0.0035
-
-
         bb_rmot_coil_1_voltage = 5.5
         bb_rmot_coil_2_voltage = 5.45
         sf_rmot_coil_1_voltage = 5.8
         sf_rmot_coil_2_voltage = 5.75
-
         sf_frequency = 80.92 
 
         
-
-        for j in range(int32(cycles)):          #This runs the actual sequence
+        for j in range(int32(cycles)):        
 
             delay(100*us)
 
@@ -579,26 +527,25 @@ class clock_transition_scan(EnvExperiment):
 
             delay(single_frequency_time*ms)
             
-
             self.clock_spectroscopy(
                 aom_frequency = scan_frequency_values[j],
                 pulse_time = self.rabi_pulse_duration_ms,
             )
 
-            self.seperate_probe(
-                tof = time_of_flight,
-                probe_duration = 0.2 * ms,
-                probe_frequency= 200 * MHz
-            )
+            # self.seperate_probe(
+            #     tof = time_of_flight,
+            #     probe_duration = 0.2 * ms,
+            #     probe_frequency= 200 * MHz
+            # )
 
-            # self.normalised_detection()
-
-
+            self.normalised_detection(j)
 
             delay(50*ms)
 
  
+    def analyse(self):    
 
+        #Take data from the excitation fractions list and apply a lorentzian fit, 
             
 
 
