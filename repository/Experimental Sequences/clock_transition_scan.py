@@ -56,6 +56,7 @@ class clock_transition_scan(EnvExperiment):
         self.setattr_argument("blue_mot_loading_time", NumberValue(default=2000 * ms))
 
         self.excitation_fractions = []  #Excitation fractions list to append to
+        self.scan_frequency_values = []
 
     @kernel
     def initialise_modules(self):
@@ -352,7 +353,7 @@ class clock_transition_scan(EnvExperiment):
 
         self.excitation_fractions.append(self.scan_frequency_values[j],excitation_fraction,ground_state)
 
-        return
+        return self.excitation_fractions
 
     @kernel
     def normalised_detection(self,j):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
@@ -428,9 +429,10 @@ class clock_transition_scan(EnvExperiment):
 
         samples_ch0 = [i[0] for i in samples]
 
-        self.excitation_fraction(samples_ch0,j)
+        print(self.excitation_fraction(samples_ch0,j))
 
-        self.set_dataset("excitation_fracrion", self.excitation_fractions, broadcast=True, archive=True)
+        # self.set_dataset("excitation_fraction", self.excitation_fractions[j], broadcast=True, archive=True)
+      
 
     @kernel
     def run(self):
@@ -444,9 +446,9 @@ class clock_transition_scan(EnvExperiment):
         print(scan_start)
         scan_end =int32(self.scan_center_frequency_Hz + (self.scan_range_Hz/2))
         print(scan_end)
-        scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
-        print(scan_frequency_values)
-        cycles = len(scan_frequency_values)
+        self.scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
+        print(self.scan_frequency_values)
+        cycles = len(self.scan_frequency_values)
 
         #Sequence Parameters - Update these with optimised values
         bmot_compression_time = 20 
@@ -478,8 +480,6 @@ class clock_transition_scan(EnvExperiment):
             )
 
             self.red_modulation_on(
-                f_start = 80 * MHz,        #Starting frequency of the ramp
-                A_start = 0.06,            #initial amplitude of the ramp
                 f_SWAP_start = 80 * MHz,   #Ramp lower limit
                 f_SWAP_end = 81 * MHz,     #Ramp upper limit
                 T_SWAP = 40 * us,          #Time spent on each step, 40us is equivalent to 25kHz modulation rate
@@ -528,7 +528,7 @@ class clock_transition_scan(EnvExperiment):
             delay(single_frequency_time*ms)
             
             self.clock_spectroscopy(
-                aom_frequency = scan_frequency_values[j],
+                aom_frequency = self.scan_frequency_values[j],
                 pulse_time = self.rabi_pulse_duration_ms,
             )
 
@@ -542,12 +542,3 @@ class clock_transition_scan(EnvExperiment):
 
             delay(50*ms)
 
- 
-    def analyse(self):    
-
-        #Take data from the excitation fractions list and apply a lorentzian fit, 
-            
-
-
-
-    
