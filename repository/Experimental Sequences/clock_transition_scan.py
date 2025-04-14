@@ -263,16 +263,16 @@ class clock_transition_scan(EnvExperiment):
         
 
         for i in range(int64(steps_com)):
-            # voltage_1 = bb_rmot_volt_1 + ((i+1) * volt_1_steps)
-            # voltage_2 = bb_rmot_volt_2 + ((i+1) * volt_2_steps)
+            voltage_1 = bb_rmot_volt_1 + ((i+1) * volt_1_steps)
+            voltage_2 = bb_rmot_volt_2 + ((i+1) * volt_2_steps)
             amp = bb_rmot_amp - ((i+1) * amp_steps)
 
-            # self.mot_coil_1.write_dac(0, voltage_1)
-            # self.mot_coil_2.write_dac(1, voltage_2)
+            self.mot_coil_1.write_dac(0, voltage_1)
+            self.mot_coil_2.write_dac(1, voltage_2)
 
             with parallel:
-                # self.mot_coil_1.load()
-                # self.mot_coil_2.load()
+                self.mot_coil_1.load()
+                self.mot_coil_2.load()
                 self.red_mot_aom.set(frequency = frequency * MHz, amplitude = amp)
             
             delay(t_com*ms)

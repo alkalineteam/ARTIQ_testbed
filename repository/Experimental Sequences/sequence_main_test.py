@@ -60,13 +60,13 @@ class sequence_main(EnvExperiment):
         self.setattr_argument("time_of_flight", NumberValue(default=40))
 
         self.setattr_argument("blue_mot_coil_1_voltage", NumberValue(default=8.0))
-        self.setattr_argument("blue_mot_coil_2_voltage", NumberValue(default=7.9))
+        self.setattr_argument("blue_mot_coil_2_voltage", NumberValue(default=7.82))
         self.setattr_argument("compressed_blue_mot_coil_1_voltage", NumberValue(default=8.55))
-        self.setattr_argument("compressed_blue_mot_coil_2_voltage", NumberValue(default=8.45))
+        self.setattr_argument("compressed_blue_mot_coil_2_voltage", NumberValue(default=8.34))
         self.setattr_argument("bb_rmot_coil_1_voltage", NumberValue(default=5.3))
-        self.setattr_argument("bb_rmot_coil_2_voltage", NumberValue(default=5.2))
+        self.setattr_argument("bb_rmot_coil_2_voltage", NumberValue(default=5.28))
         self.setattr_argument("sf_rmot_coil_1_voltage", NumberValue(default=5.7))
-        self.setattr_argument("sf_rmot_coil_2_voltage", NumberValue(default=5.6))
+        self.setattr_argument("sf_rmot_coil_2_voltage", NumberValue(default=5.66))
         self.setattr_argument("sf_frequency", NumberValue(default=80.92))
 
     @kernel
