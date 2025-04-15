@@ -59,14 +59,15 @@ class sequence_main(EnvExperiment):
         self.setattr_argument("time_of_flight", NumberValue(default=40))
 
         self.setattr_argument("blue_mot_coil_1_voltage", NumberValue(default=8.0))
-        self.setattr_argument("blue_mot_coil_2_voltage", NumberValue(default=7.9))
+        self.setattr_argument("blue_mot_coil_2_voltage", NumberValue(default=7.82))
         self.setattr_argument("compressed_blue_mot_coil_1_voltage", NumberValue(default=8.55))
-        self.setattr_argument("compressed_blue_mot_coil_2_voltage", NumberValue(default=8.45))
+        self.setattr_argument("compressed_blue_mot_coil_2_voltage", NumberValue(default=8.34))
         self.setattr_argument("bb_rmot_coil_1_voltage", NumberValue(default=5.3))
-        self.setattr_argument("bb_rmot_coil_2_voltage", NumberValue(default=5.2))
+        self.setattr_argument("bb_rmot_coil_2_voltage", NumberValue(default=5.28))
         self.setattr_argument("sf_rmot_coil_1_voltage", NumberValue(default=5.7))
-        self.setattr_argument("sf_rmot_coil_2_voltage", NumberValue(default=5.6))
+        self.setattr_argument("sf_rmot_coil_2_voltage", NumberValue(default=5.66))
         self.setattr_argument("sf_frequency", NumberValue(default=80.92))
+
 
     @kernel
     def initialise_modules(self):
@@ -378,6 +379,7 @@ class sequence_main(EnvExperiment):
         self.stepping_aom.set(frequency = 0 * Hz)
 
 
+
     @kernel
     def pmt_capture(self,sampling_duration,sampling_rate,tof):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
         # self.core.break_realtime()
@@ -579,7 +581,7 @@ class sequence_main(EnvExperiment):
 
             # self.clock_spectroscopy(
             #     aom_frequency = 0*Hz,
-            #     pulse_time = 60*ms,
+            #     pulse_time = 2000*ms,
             #     B = 3.0
 
             # )
@@ -607,7 +609,7 @@ class sequence_main(EnvExperiment):
             
             self.seperate_probe(
                 tof = self.time_of_flight,
-                probe_duration = 0.2 ,
+                probe_duration = 0.02 ,
                 probe_frequency= 200 * MHz
             )
 
