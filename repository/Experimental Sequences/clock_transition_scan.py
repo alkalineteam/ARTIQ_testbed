@@ -388,7 +388,7 @@ class clock_transition_scan(EnvExperiment):
                     self.probe_aom.set(frequency=200 * MHz, amplitude=0.17)
                     self.probe_aom.sw.on()
 
-                delay(0.2* ms)      #Ground state probe duration            
+                delay(0.8* ms)      #Ground state probe duration            
                 
                 with parallel:
                     self.probe_shutter.off()
@@ -408,14 +408,14 @@ class clock_transition_scan(EnvExperiment):
                 delay(3.9*ms) 
 
                 self.probe_aom.sw.on()
-                delay(0.2*ms)            #Ground state probe duration
+                delay(0.8*ms)            #Ground state probe duration
                 self.probe_aom.sw.off()
 
                 delay(20*ms)
                 #  ########################Background############################
  
                 self.probe_aom.sw.on()
-                delay(0.2*ms)            #Ground state probe duration
+                delay(0.8*ms)            #Ground state probe duration
                 self.probe_aom.sw.off()
                 self.probe_shutter.off()
 
@@ -528,7 +528,7 @@ class clock_transition_scan(EnvExperiment):
             delay(single_frequency_time*ms)
             self.red_mot_aom.sw.off()
 
-            
+            # delay(40*ms)
             self.clock_spectroscopy(
                 aom_frequency = scan_frequency_values[j],
                 pulse_time = self.rabi_pulse_duration_ms,
