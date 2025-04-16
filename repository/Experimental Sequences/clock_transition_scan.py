@@ -362,14 +362,17 @@ class clock_transition_scan(EnvExperiment):
         # print(excitation_fraction)
         # excitation_fraction_list[j] = excitation_fraction
         # print(excitation_fraction_list)
-        return type(excitation_fraction)
+        return float32(excitation_fraction)
 
-    
+    @kernel
+    def excitation_fraction(self):
+
+
 
      
 
     @kernel
-    def normalised_detection(self):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
+    def normalised_detection(self,j):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
         self.core.break_realtime()
         sample_period = 1 / 20000      #10kHz sampling rate should give us enough data points
         sampling_duration = 0.06      #30ms sampling time to allow for all the imaging slices to take place
@@ -446,10 +449,33 @@ class clock_transition_scan(EnvExperiment):
 
         # self.excitation_fraction(samples_ch0,j,excitation_fraction_list)
 
-     
 
-        # ef = self.excitation_fraction(samples_ch0)
-        print(samples_ch0)
+        gs = samples_ch0[0:200]
+        es = samples_ch0[500:700]
+        bg = samples_ch0[900:1100]
+
+        gs_max = gs[0]
+        es_max = es[0]
+        bg_max = bg[0]
+
+        # Loop through the rest of the list
+
+        with parallel:
+            for num in gs_max[1:]:
+                if num > gs_max:
+                    gs_max = num
+
+            for num in es_max[1:]:
+                if num > es_max:
+                    es_max = num
+
+            for num in bg_max[1:]:
+                if num > bg_max:
+                    bg_max = num
+        
+        excitation_fraction = (es_max - bg_max) / ((gs_max-bg_max) + (es_max-bg_max)) 
+        self.excitation_fraction_list[j] = excitation_fraction
+        print(excitation_fraction)
         # ef.append(self.excitation_fraction_list)
 
 
@@ -472,7 +498,7 @@ class clock_transition_scan(EnvExperiment):
         scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
         cycles = len(scan_frequency_values)
 
-    
+        self.excitation_fraction_list = [0.0] * cycles
 
 
         #Sequence Parameters - Update these with optimised values
@@ -566,3 +592,4 @@ class clock_transition_scan(EnvExperiment):
             delay(50*ms)
 
         # print(self.excitation_fraction_list)
+        print(self.excitation_fraction_list[1:cycles])
