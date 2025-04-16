@@ -59,8 +59,6 @@ class clock_transition_scan(EnvExperiment):
         self.setattr_argument("bias_field_mT", NumberValue(default=3.0))
         self.setattr_argument("blue_mot_loading_time", NumberValue(default=2000 * ms))
 
-        self.excitation_fraction_values = []
-
         
 
 
@@ -364,6 +362,8 @@ class clock_transition_scan(EnvExperiment):
 
         excitation_fraction_list[j] = excitation_fraction
 
+        print(excitation_fraction_list)
+
         return excitation_fraction_list
 
     @kernel
@@ -442,9 +442,9 @@ class clock_transition_scan(EnvExperiment):
 
         self.set_dataset("excitation_fraction", samples_ch0, broadcast=True, archive=True)
 
-        data = self.excitation_fraction(samples_ch0,j,excitation_fraction_list)
+        self.excitation_fraction(samples_ch0,j,excitation_fraction_list)
 
-        return data
+        
 
 
       
@@ -550,8 +550,8 @@ class clock_transition_scan(EnvExperiment):
                 pulse_time = self.rabi_pulse_duration_ms,
             )
 
-            self.excitation_fraction_values = self.normalised_detection(j,excitation_fraction_list)
-            print(self.excitation_fraction_values)
+            excitation_fraction_values = self.normalised_detection(j,excitation_fraction_list)
+            print(excitation_fraction_values)
             delay(50*ms)
 
 
