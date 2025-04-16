@@ -17,7 +17,7 @@ default_cfr2 = (
     | (1 << 24) # the amplitude is scaled by the ASF from the active profile (without this, the DDS outputs max. possible amplitude -> cracked AOM crystals)
 )
 
-class clock_transition_scan(EnvExperiment):
+class test_clock_transition_scan(EnvExperiment):
 
     def build(self):
         self.setattr_device("core")
@@ -517,7 +517,7 @@ class clock_transition_scan(EnvExperiment):
                 compress_bmot_volt_2 = compressed_blue_mot_coil_2_voltage,
                 bmot_amp = bmot_amp,
                 compress_bmot_amp = compress_bmot_amp,
-                compression_time = bmot_compression_time
+                compression_time = bmot_compression_time,
                 blue_mot_cooling_time = blue_mot_cooling_time
             )
 
@@ -551,7 +551,7 @@ class clock_transition_scan(EnvExperiment):
             # delay(40*ms)
             self.clock_spectroscopy(
                 aom_frequency = scan_frequency_values[j],
-                pulse_time = self.rabi_pulse_duration_ms,
+                pulse_time = self.rabi_pulse_duration_ms
             )
 
             self.normalised_detection()

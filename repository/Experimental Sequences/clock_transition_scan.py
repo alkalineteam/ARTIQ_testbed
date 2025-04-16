@@ -1,6 +1,6 @@
 from artiq.experiment import *
 from artiq.coredevice.ttl import TTLOut
-from numpy import int64, int32, max
+from numpy import int64, int32, max, float64, float32
 import numpy as numpy
 from artiq.coredevice import ad9910
 import pandas as pd
@@ -59,7 +59,7 @@ class clock_transition_scan(EnvExperiment):
         self.setattr_argument("bias_field_mT", NumberValue(default=3.0))
         self.setattr_argument("blue_mot_loading_time", NumberValue(default=2000 * ms))
 
-        
+        self.excitation_fraction_list = []
 
 
     @kernel
@@ -324,7 +324,6 @@ class clock_transition_scan(EnvExperiment):
         comp_field = 1.35 * 0.14    # comp current * scaling factor from measurement
         bias_at_coil = (self.bias_field_mT - comp_field)/ 0.914   #bias field dips in center of coils due to geometry, scaling factor provided by modelling field
         current_per_coil = ((bias_at_coil) / 2.0086) / 2   
-        print(current_per_coil)
         coil_1_voltage = current_per_coil + 5.0
         coil_2_voltage = 5.0 - (current_per_coil / 0.94 )           #Scaled against coil 1
        
@@ -351,23 +350,26 @@ class clock_transition_scan(EnvExperiment):
         self.stepping_aom.sw.off()
    
     @rpc
-    def excitation_fraction(self,data,j,excitation_fraction_list):                                    #Calulates the excitation fraction from the sampler data and writes it to list for analysis later
+    def excitation_fraction(self,data):                                    #Calulates the excitation fraction from the sampler data and writes it to list for analysis later
 
         atom_scalar = 10000    #Scalar value to convert from Volts to Atom No, needs calibrating often
 
-        background = numpy.max(numpy.array(data[0:200]))
-        ground_state = ((numpy.max(numpy.array(data[500:700])) )- background ) * atom_scalar
-        excited_state = ((numpy.max(numpy.array(data[900:1100]))) - background) *atom_scalar
+        background = numpy.max(numpy.array(data[900:1100]))
+        ground_state = ((numpy.max(numpy.array(data[0:200])) )- background ) * atom_scalar
+        excited_state = ((numpy.max(numpy.array(data[500:700]))) - background) *atom_scalar
 
         excitation_fraction = excited_state / (ground_state + excited_state) 
-        print(excitation_fraction)
+        # print(excitation_fraction)
+        # excitation_fraction_list[j] = excitation_fraction
+        # print(excitation_fraction_list)
+        return float32(excitation_fraction)
 
-        excitation_fraction_list[j] = excitation_fraction
+    
 
      
 
     @kernel
-    def normalised_detection(self,j,excitation_fraction_list):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
+    def normalised_detection(self):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
         self.core.break_realtime()
         sample_period = 1 / 20000      #10kHz sampling rate should give us enough data points
         sampling_duration = 0.06      #30ms sampling time to allow for all the imaging slices to take place
@@ -442,8 +444,14 @@ class clock_transition_scan(EnvExperiment):
 
         self.set_dataset("excitation_fraction", samples_ch0, broadcast=True, archive=True)
 
-        return samples_ch0
         # self.excitation_fraction(samples_ch0,j,excitation_fraction_list)
+
+     
+
+        ef = self.excitation_fraction(samples_ch0)
+        print(ef)
+        # ef.append(self.excitation_fraction_list)
+
 
        
 
@@ -464,7 +472,7 @@ class clock_transition_scan(EnvExperiment):
         scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
         cycles = len(scan_frequency_values)
 
-        excitation_fraction_list = [0.0] * cycles
+    
 
 
         #Sequence Parameters - Update these with optimised values
@@ -551,11 +559,10 @@ class clock_transition_scan(EnvExperiment):
                 pulse_time = self.rabi_pulse_duration_ms,
             )
 
-            data = self.normalised_detection(j,excitation_fraction_list)
+            self.normalised_detection()
             
-            print(data)
-            
+
             
             delay(50*ms)
 
-
+        # print(self.excitation_fraction_list)
