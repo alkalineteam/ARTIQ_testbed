@@ -59,8 +59,6 @@ class clock_transition_scan(EnvExperiment):
         self.setattr_argument("bias_field_mT", NumberValue(default=3.0))
         self.setattr_argument("blue_mot_loading_time", NumberValue(default=2000 * ms))
 
-        self.excitation_fraction_values = []
-
         
 
 
