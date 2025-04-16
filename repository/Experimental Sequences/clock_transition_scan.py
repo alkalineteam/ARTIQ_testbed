@@ -364,7 +364,7 @@ class clock_transition_scan(EnvExperiment):
 
         excitation_fraction_list[j] = excitation_fraction
 
-        return excitation_fraction_list
+     
 
     @kernel
     def normalised_detection(self,j,excitation_fraction_list):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
@@ -442,9 +442,9 @@ class clock_transition_scan(EnvExperiment):
 
         self.set_dataset("excitation_fraction", samples_ch0, broadcast=True, archive=True)
 
-        data = self.excitation_fraction(samples_ch0,j,excitation_fraction_list)
+        self.excitation_fraction(samples_ch0,j,excitation_fraction_list)
 
-        return data
+       
 
 
       
