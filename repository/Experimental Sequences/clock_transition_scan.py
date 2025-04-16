@@ -362,7 +362,7 @@ class clock_transition_scan(EnvExperiment):
         return excitation_fraction_list
 
     @kernel
-    def normalised_detection(self):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
+    def normalised_detection(self,j,excitation_fraction_list):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
         self.core.break_realtime()
         sample_period = 1 / 20000      #10kHz sampling rate should give us enough data points
         sampling_duration = 0.06      #30ms sampling time to allow for all the imaging slices to take place
@@ -437,7 +437,9 @@ class clock_transition_scan(EnvExperiment):
 
         self.set_dataset("excitation_fraction", samples_ch0, broadcast=True, archive=True)
 
-        return samples_ch0
+        self.excitation_fraction(samples_ch0,j,excitation_fraction_list)
+
+        
 
 
       
@@ -459,7 +461,7 @@ class clock_transition_scan(EnvExperiment):
         print(scan_frequency_values)
         cycles = len(scan_frequency_values)
 
-        excitation_fraction_list = [0] * len(cycles)
+        excitation_fraction_list = [0.0] * cycles
 
 
         #Sequence Parameters - Update these with optimised values
@@ -546,9 +548,9 @@ class clock_transition_scan(EnvExperiment):
                 pulse_time = self.rabi_pulse_duration_ms,
             )
 
-            pmt_data = self.normalised_detection()
+            self.normalised_detection(j,excitation_fraction_list)
 
-            self.excitation_fraction(pmt_data,j,excitation_fraction_list)
+           
 
             delay(50*ms)
 
