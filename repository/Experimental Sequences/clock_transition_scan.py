@@ -442,7 +442,8 @@ class clock_transition_scan(EnvExperiment):
 
         self.set_dataset("excitation_fraction", samples_ch0, broadcast=True, archive=True)
 
-        self.excitation_fraction(samples_ch0,j,excitation_fraction_list)
+        return samples_ch0
+        # self.excitation_fraction(samples_ch0,j,excitation_fraction_list)
 
        
 
@@ -550,8 +551,11 @@ class clock_transition_scan(EnvExperiment):
                 pulse_time = self.rabi_pulse_duration_ms,
             )
 
-            self.excitation_fraction_values = self.normalised_detection(j,excitation_fraction_list)
-            print(self.excitation_fraction_values)
+            data = self.normalised_detection(j,excitation_fraction_list)
+            
+            print(data)
+            
+            
             delay(50*ms)
 
 
