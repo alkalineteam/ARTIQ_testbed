@@ -4,6 +4,9 @@ from numpy import int64, int32, max
 import numpy as numpy
 from artiq.coredevice import ad9910
 import pandas as pd
+import os
+import csv
+from datetime import datetime
 
 default_cfr1 = (
     (1 << 1)    # configures the serial data I/O pin (SDIO) as an input only pin; 3-wire serial programming mode
@@ -55,6 +58,8 @@ class clock_transition_scan(EnvExperiment):
         self.setattr_argument("clock_intensity", NumberValue(default=0.05))
         self.setattr_argument("bias_field_mT", NumberValue(default=3.0))
         self.setattr_argument("blue_mot_loading_time", NumberValue(default=2000 * ms))
+
+        self.excitation_fraction_values = []
 
         
 
@@ -437,9 +442,9 @@ class clock_transition_scan(EnvExperiment):
 
         self.set_dataset("excitation_fraction", samples_ch0, broadcast=True, archive=True)
 
-        self.excitation_fraction(samples_ch0,j,excitation_fraction_list)
+        data = self.excitation_fraction(samples_ch0,j,excitation_fraction_list)
 
-        
+        return data
 
 
       
@@ -454,11 +459,8 @@ class clock_transition_scan(EnvExperiment):
 
         #Setup frequency scan parameters
         scan_start = int32(self.scan_center_frequency_Hz - (self.scan_range_Hz/2))
-        print(scan_start)
         scan_end =int32(self.scan_center_frequency_Hz + (self.scan_range_Hz/2))
-        print(scan_end)
         scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
-        print(scan_frequency_values)
         cycles = len(scan_frequency_values)
 
         excitation_fraction_list = [0.0] * cycles
@@ -548,9 +550,19 @@ class clock_transition_scan(EnvExperiment):
                 pulse_time = self.rabi_pulse_duration_ms,
             )
 
-            self.normalised_detection(j,excitation_fraction_list)
-
-           
-
+            self.excitation_fraction_values = self.normalised_detection(j,excitation_fraction_list)
+            print(self.excitation_fraction_values)
             delay(50*ms)
+
+
+
+        # current_date = datetime.now().strftime("%Y-%m-%d")
+
+        # df = pd.DataFrame({
+        #     "Frequency (Hz)" : scan_frequency_values
+        #     "excitation_fractions" : excitation_fraction_values
+
+        # df.to_csv("")
+
+        # })
 
