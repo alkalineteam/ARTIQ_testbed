@@ -362,7 +362,7 @@ class clock_transition_scan(EnvExperiment):
         # print(excitation_fraction)
         # excitation_fraction_list[j] = excitation_fraction
         # print(excitation_fraction_list)
-        return float32(excitation_fraction)
+        return type(excitation_fraction)
 
     
 
@@ -448,8 +448,8 @@ class clock_transition_scan(EnvExperiment):
 
      
 
-        ef = self.excitation_fraction(samples_ch0)
-        print(ef)
+        # ef = self.excitation_fraction(samples_ch0)
+        print(samples_ch0)
         # ef.append(self.excitation_fraction_list)
 
 
