@@ -3,6 +3,7 @@ from artiq.coredevice.ttl import TTLOut
 from numpy import int64, int32, max
 import numpy as numpy
 from artiq.coredevice import ad9910
+import pandas as pd
 
 default_cfr1 = (
     (1 << 1)    # configures the serial data I/O pin (SDIO) as an input only pin; 3-wire serial programming mode
