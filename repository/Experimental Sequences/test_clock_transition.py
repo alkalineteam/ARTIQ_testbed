@@ -187,7 +187,9 @@ class clock_transition_scan(EnvExperiment):
         # self.red_mot_aom.set_att(19*dB)
 
     @kernel
-    def blue_mot_loading(self,bmot_voltage_1,bmot_voltage_2):                  
+    def blue_mot_loading(self,bmot_voltage_1,bmot_voltage_2):   
+        delay(100*us)
+
         self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
         self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
 
@@ -205,9 +207,11 @@ class clock_transition_scan(EnvExperiment):
             self.zeeman_slower_shutter.on()
             self.repump_shutter_707.on()
             self.repump_shutter_679.on()
+
+        delay(self.blue_mot_loading_time* ms)
     
     @kernel
-    def blue_mot_compression(self,bmot_voltage_1,bmot_voltage_2,compress_bmot_volt_1,compress_bmot_volt_2,bmot_amp,compress_bmot_amp,compression_time):
+    def blue_mot_compression(self,bmot_voltage_1,bmot_voltage_2,compress_bmot_volt_1,compress_bmot_volt_2,bmot_amp,compress_bmot_amp,compression_time,blue_mot_cooling_time):
 
         self.zeeman_slower_aom.set(frequency=70 * MHz, amplitude=0.00)   #Turn off the Zeeman Slower
         self.zeeman_slower_shutter.off()
@@ -236,24 +240,29 @@ class clock_transition_scan(EnvExperiment):
             
             delay(t_com*ms)
 
+        delay(bmot_compression_time*ms)    #Blue MOT compression time
+
+        delay(blue_mot_cooling_time*ms)   #Allowing further cooling of the cloud by just holding the atoms here
+
+
     @kernel
-    def broadband_red_mot(self,rmot_voltage_1,rmot_voltage_2):      
+    def broadband_red_mot(self,rmot_voltage_1,rmot_voltage_2,broadband_red_mot_time):      
+            
              
-        self.blue_mot_aom.set(frequency=90*MHz,amplitude=0.00)   
-        self.blue_mot_aom.sw.off()                                   #Switch off blue beams
-        self.repump_shutter_679.off()
-        self.repump_shutter_707.off()
-        self.blue_mot_shutter.off()
+            self.blue_mot_aom.set(frequency=90*MHz,amplitude=0.00)   
+            self.blue_mot_aom.sw.off()                                   #Switch off blue beams
+            self.repump_shutter_679.off()
+            self.repump_shutter_707.off()
+            self.blue_mot_shutter.off()
 
-        self.mot_coil_1.write_dac(0, rmot_voltage_1)
-        self.mot_coil_2.write_dac(1, rmot_voltage_2)
+            self.mot_coil_1.write_dac(0, rmot_voltage_1)
+            self.mot_coil_2.write_dac(1, rmot_voltage_2)
 
-        with parallel:
-            self.mot_coil_1.load()
-            self.mot_coil_2.load()
-
-        
-    
+            with parallel:
+                self.mot_coil_1.load()
+                self.mot_coil_2.load()
+     
+            delay(broadband_red_mot_time*ms)
     @kernel
     def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2,frequency,red_mot_compression_time):
 
@@ -282,6 +291,15 @@ class clock_transition_scan(EnvExperiment):
                 self.red_mot_aom.set(frequency = frequency * MHz, amplitude = amp)
             
             delay(t_com*ms)
+
+
+        delay(red_mot_compression_time*ms)
+
+        delay(single_frequency_time*ms)
+
+        
+        self.red_mot_aom.sw.off()
+
         
     @kernel 
     def seperate_probe(self,tof,probe_duration,probe_frequency):               #Only triggers the camera, and seperate probe
@@ -367,7 +385,7 @@ class clock_transition_scan(EnvExperiment):
      
 
     @kernel
-    def normalised_detection(self,j,excitation_fraction_list):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
+    def normalised_detection(self):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
         self.core.break_realtime()
         sample_period = 1 / 20000      #10kHz sampling rate should give us enough data points
         sampling_duration = 0.06      #30ms sampling time to allow for all the imaging slices to take place
@@ -441,24 +459,14 @@ class clock_transition_scan(EnvExperiment):
         samples_ch0 = [i[0] for i in samples]
 
         self.set_dataset("excitation_fraction", samples_ch0, broadcast=True, archive=True)
+        delay(50*ms)
 
-        return samples_ch0
-        # self.excitation_fraction(samples_ch0,j,excitation_fraction_list)
 
        
-
-
+    @rpc
+    def sequence(self):
       
-      
-
-    @kernel
-    def run(self):
-        self.core.reset()
-        self.core.break_realtime()
-
-        self.initialise_modules()
-
-        #Setup frequency scan parameters
+       #Setup frequency scan parameters
         scan_start = int32(self.scan_center_frequency_Hz - (self.scan_range_Hz/2))
         scan_end =int32(self.scan_center_frequency_Hz + (self.scan_range_Hz/2))
         scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
@@ -489,8 +497,6 @@ class clock_transition_scan(EnvExperiment):
         
         for j in range(int32(cycles)):        
 
-            delay(100*us)
-
             self.blue_mot_loading(
                  bmot_voltage_1 = blue_mot_coil_1_voltage,
                  bmot_voltage_2 = blue_mot_coil_2_voltage
@@ -502,8 +508,7 @@ class clock_transition_scan(EnvExperiment):
                 T_SWAP = 40 * us,          #Time spent on each step, 40us is equivalent to 25kHz modulation rate
                 A_SWAP = 0.06,             #Amplitude during modulation
             )
-
-            delay(self.blue_mot_loading_time* ms)
+   
 
             self.blue_mot_compression(                           #Here we are ramping up the blue MOT field and ramping down the blue power
                 bmot_voltage_1 = blue_mot_coil_1_voltage,
@@ -513,18 +518,19 @@ class clock_transition_scan(EnvExperiment):
                 bmot_amp = bmot_amp,
                 compress_bmot_amp = compress_bmot_amp,
                 compression_time = bmot_compression_time
+                blue_mot_cooling_time = blue_mot_cooling_time
             )
 
-            delay(bmot_compression_time*ms)    #Blue MOT compression time
+            
 
-            delay(blue_mot_cooling_time*ms)   #Allowing further cooling of the cloud by just holding the atoms here
 
             self.broadband_red_mot(                                  #Switch to low field gradient for Red MOT, switches off the blue beams
                 rmot_voltage_1= bb_rmot_coil_1_voltage,
-                rmot_voltage_2 = bb_rmot_coil_2_voltage
+                rmot_voltage_2 = bb_rmot_coil_2_voltage,
+                broadband_red_mot_time = broadband_red_mot_time
             )
 
-            delay(broadband_red_mot_time*ms)
+
 
             self.red_modulation_off(                   #switch to single frequency
                 f_SF = sf_frequency * MHz,
@@ -537,13 +543,10 @@ class clock_transition_scan(EnvExperiment):
                 sf_rmot_volt_1 = sf_rmot_coil_1_voltage,
                 sf_rmot_volt_2 = sf_rmot_coil_2_voltage,
                 frequency = sf_frequency,
-                red_mot_compression_time=red_mot_compression_time
+                red_mot_compression_time=red_mot_compression_time,
+                single_frequency_time = single_frequency_time 
             )
 
-            delay(red_mot_compression_time*ms)
-
-            delay(single_frequency_time*ms)
-            self.red_mot_aom.sw.off()
 
             # delay(40*ms)
             self.clock_spectroscopy(
@@ -551,11 +554,28 @@ class clock_transition_scan(EnvExperiment):
                 pulse_time = self.rabi_pulse_duration_ms,
             )
 
-            data = self.normalised_detection(j,excitation_fraction_list)
+            self.normalised_detection()
             
-            print(data)
+
+
+
+
+
+
+
+
+
+    @kernel
+    def run(self):
+        self.core.reset()
+        self.core.break_realtime()
+
+        self.initialise_modules()
+
+        self.sequence()
+        
             
             
-            delay(50*ms)
+        
 
 
