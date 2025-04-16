@@ -55,7 +55,7 @@ class clock_transition_scan(EnvExperiment):
         self.setattr_argument("bias_field_mT", NumberValue(default=3.0))
         self.setattr_argument("blue_mot_loading_time", NumberValue(default=2000 * ms))
 
-        self.excitation_fractions = []  #Excitation fractions list to append to
+        
 
 
     @kernel
@@ -345,7 +345,7 @@ class clock_transition_scan(EnvExperiment):
         self.stepping_aom.sw.off()
    
     @rpc
-    def excitation_fraction(self,data,j):                                    #Calulates the excitation fraction from the sampler data and writes it to list for analysis later
+    def excitation_fraction(self,data,j,excitation_fraction_list):                                    #Calulates the excitation fraction from the sampler data and writes it to list for analysis later
 
         atom_scalar = 10000    #Scalar value to convert from Volts to Atom No, needs calibrating often
 
@@ -356,8 +356,12 @@ class clock_transition_scan(EnvExperiment):
         excitation_fraction = excited_state / (ground_state + excited_state) 
         print(excitation_fraction)
 
+        excitation_fraction_list[j] = excitation_fraction
+
+        return excitation_fraction_list
+
     @kernel
-    def normalised_detection(self,j):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
+    def normalised_detection(self):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
         self.core.break_realtime()
         sample_period = 1 / 20000      #10kHz sampling rate should give us enough data points
         sampling_duration = 0.06      #30ms sampling time to allow for all the imaging slices to take place
@@ -430,8 +434,12 @@ class clock_transition_scan(EnvExperiment):
 
         samples_ch0 = [i[0] for i in samples]
 
-
         self.set_dataset("excitation_fraction", samples_ch0, broadcast=True, archive=True)
+
+        return samples_ch0
+
+
+      
       
 
     @kernel
@@ -449,6 +457,9 @@ class clock_transition_scan(EnvExperiment):
         scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
         print(scan_frequency_values)
         cycles = len(scan_frequency_values)
+
+        excitation_fraction_list = [0] * len(cycles)
+
 
         #Sequence Parameters - Update these with optimised values
         bmot_compression_time = 20 
@@ -534,13 +545,9 @@ class clock_transition_scan(EnvExperiment):
                 pulse_time = self.rabi_pulse_duration_ms,
             )
 
-            # self.seperate_probe(
-            #     tof = time_of_flight,
-            #     probe_duration = 0.2 * ms,
-            #     probe_frequency= 200 * MHz
-            # )
+            pmt_data = self.normalised_detection()
 
-            self.normalised_detection(j)
+            self.excitation_fraction(pmt_data,j,excitation_fraction_list)
 
             delay(50*ms)
 
