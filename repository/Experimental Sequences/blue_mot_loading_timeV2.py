@@ -34,80 +34,87 @@ class bluemot_loading_time(EnvExperiment):
 
 
         self.setattr_argument("Cycles", NumberValue(default = 1))
-        self.setattr_argument("Loading_Time", NumberValue(default = 3000 * ms))
-        self.setattr_argument("Holding_Time", NumberValue(default = 10))
-       
-    @kernel
-    def run(self):
-        self.core.reset()
-        self.core.break_realtime()
+        self.setattr_argument("Loading_Time", NumberValue(default = 2000 * ms))
+        self.setattr_argument("blue_mot_coil_1_voltage", NumberValue(default=8.0))
+        self.setattr_argument("blue_mot_coil_2_voltage", NumberValue(default=7.82))
+        self.setattr_argument("time_of_flight", NumberValue(default=40))
         
+
+    @kernel
+    def initialise_modules(self):
+        delay(1000*ms)
+
         # Initialize the modules
         self.blue_mot_shutter.output()
         self.zeeman_slower_shutter.output()
         self.repump_shutter_707.output()
+        self.repump_shutter_679.output()
         self.mot_coil_1.init()
         self.mot_coil_2.init()
         self.blue_mot_aom.cpld.init()
         self.blue_mot_aom.init()
         self.zeeman_slower_aom.cpld.init()
         self.zeeman_slower_aom.init()
+        self.probe_shutter.output()
+
+        self.sampler.init() 
         
         # Set the channel ON
         self.blue_mot_aom.sw.on()
         self.zeeman_slower_aom.sw.on()
-
-        self.blue_mot_aom.set_att(0.0)
-        self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
+        self.probe_aom.cpld.init()
+        self.probe_aom.init()
         
+        delay(100*ms)
 
-        delay(1000*ms)
+    @kernel
+    def blue_mot_loading(self,bmot_voltage_1,bmot_voltage_2):
+        self.blue_mot_aom.set(frequency = 90 * MHz, amplitude = 0.06)
+        self.zeeman_slower_aom.set(frequency = 70 * MHz, amplitude = 0.08)
 
-        for i in range(int64(self.Cycles)):
+        self.blue_mot_aom.sw.on
+        self.zeeman_slower_aom.sw.on
+
+        self.mot_coil_1.write_dac(0, bmot_voltage_1)
+        self.mot_coil_2.write_dac(1, bmot_voltage_2)
 
 
-
-
-
-
-            ####################  in parallel to sampler #######################
-
-                    # Set the magnetic field constant
-            voltage_1 = 8.0
-            voltage_2 = 7.82
-            self.mot_coil_1.write_dac(0, voltage_1)
-            self.mot_coil_2.write_dac(1, voltage_2)
-
+        with parallel:
+            self.mot_coil_1.load()
             self.mot_coil_1.load()
             self.mot_coil_2.load()
+            self.blue_mot_shutter.on()
+            self.probe_shutter.off()
+            self.zeeman_slower_shutter.on()
+            self.repump_shutter_707.on()
+            self.repump_shutter_679.on()
+       
+    @kernel
+    def run(self):
+        self.core.reset()
+        self.core.break_realtime()
 
-            # Slice 1
+        self.initialise_modules()
+
+        for i in range(int64(self.Cycles)):
+            delay(100 *us)
+
+            ####################  in parallel to sampler #######################
+               # self.pmt_capture(
+            #     sampling_duration = 0.2,
+            #     sampling_rate= 10000,
+            #     tof =self.time_of_flight
+            # )
+
+
+            # BlueMOT loading with field constant
             with parallel:
-                self.blue_mot_shutter.on()
-                self.repump_shutter_707.on()
-                self.zeeman_slower_shutter.on()
-                self.repump_shutter_679.on()
-            
-            self.zeeman_slower_aom.set_att(0.0)
-            self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
+                self.blue_mot_loading(
+                    bmot_voltage_1 = self.blue_mot_coil_1_voltage,
+                    bmot_voltage_2 = self.blue_mot_coil_2_voltage,
 
-            delay(self.Loading_Time* ms)
+                )
 
-            # Slice 2
-            with parallel:
-                self.blue_mot_shutter.off()
-
-            delay(self.Holding_Time * ms)
-
-            #Slice 3
-            with parallel:
-                self.blue_mot_shutter.on()
-                self.repump_shutter_707.on()
-
-            with parallel:
-                self.blue_mot_shutter.off()
-                self.repump_shutter_707.off()
-
-            delay(50 * ms)
+                delay(self.blue_mot_loading_time * ms)
 
             ####################################################################################
