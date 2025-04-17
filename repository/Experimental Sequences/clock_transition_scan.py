@@ -59,7 +59,14 @@ class clock_transition_scan(EnvExperiment):
         self.setattr_argument("bias_field_mT", NumberValue(default=3.0))
         self.setattr_argument("blue_mot_loading_time", NumberValue(default=2000 * ms))
 
-        self.excitation_fraction_list = []
+        
+        scan_start = int32(self.scan_center_frequency_Hz - (self.scan_range_Hz/2))
+        scan_end =int32(self.scan_center_frequency_Hz + (self.scan_range_Hz/2))
+        self.scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
+        self.cycles = len(self.scan_frequency_values)
+
+
+        self.excitation_fraction_list = [0.0] * self.cycles
 
 
     @kernel
@@ -444,31 +451,32 @@ class clock_transition_scan(EnvExperiment):
         # print(self.excitation_fraction(samples_ch0))
                                  
 
-        # gs = samples_ch0[0:200]
-        # es = samples_ch0[500:700]
-        # bg = samples_ch0[900:1100]
+        gs = samples_ch0[0:200]
+        es = samples_ch0[500:700]
+        bg = samples_ch0[900:1100]
 
-        # gs_max = gs[0]
-        # es_max = es[0]
-        # bg_max = bg[0]
+        gs_max = gs[0]
+        es_max = es[0]
+        bg_max = bg[0]
 
-        # # Loop through the rest of the list
+        # Loop through the rest of the list
 
-        # with parallel:
-        #     for num in gs[1:]:
-        #         if num > gs_max:
-        #             gs_max = num
+        with parallel:
+            for num in gs[1:]:
+                if num > gs_max:
+                    gs_max = num
 
-        #     for num in es[1:]:
-        #         if num > es_max:
-        #             es_max = num
+            for num in es[1:]:
+                if num > es_max:
+                    es_max = num
 
-        #     for num in bg[1:]:
-        #         if num > bg_max:
-        #             bg_max = num
+            for num in bg[1:]:
+                if num > bg_max:
+                    bg_max = num
         
-        # # excitation_fraction = (es_max - bg_max) / ((gs_max-bg_max) + (es_max-bg_max)) 
-        # excitation_fraction_list[j] = float(j)
+        # excitation_fraction = (es_max - bg_max) / ((gs_max-bg_max) + (es_max-bg_max)) 
+        excitation_fraction_list[j] = float(j)
+        self.excitation_fraction_list[j] = float(j)
         # # print(excitation_fraction)
         # # ef.append(self.excitation_fraction_list)
 
@@ -486,13 +494,13 @@ class clock_transition_scan(EnvExperiment):
 
         self.initialise_modules()
 
-        #Setup frequency scan parameters
-        scan_start = int32(self.scan_center_frequency_Hz - (self.scan_range_Hz/2))
-        scan_end =int32(self.scan_center_frequency_Hz + (self.scan_range_Hz/2))
-        scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
-        cycles = len(scan_frequency_values)
+        # #Setup frequency scan parameters
+        # scan_start = int32(self.scan_center_frequency_Hz - (self.scan_range_Hz/2))
+        # scan_end =int32(self.scan_center_frequency_Hz + (self.scan_range_Hz/2))
+        # scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
+        # cycles = len(scan_frequency_values)
 
-        excitation_fraction_list = [0.0] * cycles
+        # excitation_fraction_list = [0.0] * cycles
 
 
         #Sequence Parameters - Update these with optimised values
@@ -515,7 +523,7 @@ class clock_transition_scan(EnvExperiment):
         sf_frequency = 80.92 
 
         
-        for j in range(int32(cycles)):        
+        for j in range(int32(self.cycles)):        
 
             delay(100*us)
 
@@ -575,19 +583,19 @@ class clock_transition_scan(EnvExperiment):
 
             # delay(40*ms)
             self.clock_spectroscopy(
-                aom_frequency = scan_frequency_values[j],
+                aom_frequency = self.scan_frequency_values[j],
                 pulse_time = self.rabi_pulse_duration_ms,
             )
 
-            self.normalised_detection(j,excitation_fraction_list)
+            self.normalised_detection(j,self.excitation_fraction_list)
             
 
             
             delay(50*ms)
 
-        self.excitation_fraction_list = excitation_fraction_list
+        self.excitation_fraction_list = self.excitation_fraction_list
 
-        print(excitation_fraction_list)
+        print(self.excitation_fraction_list)
 
-        self.set_dataset("excitation_fraction_list", excitation_fraction_list, broadcast=True, archive=True)
-        print(self.excitation_fraction_list[1:cycles])
+        # self.set_dataset("excitation_fraction_list", excitation_fraction_list, broadcast=True, archive=True)
+        print(self.excitation_fraction_list[0:self.cycles])
