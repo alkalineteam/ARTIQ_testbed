@@ -178,6 +178,7 @@ class sequence_main(EnvExperiment):
 
         # start ramp
         self.red_mot_aom.cpld.io_update.pulse_mu(8)
+        self.red_mot_aom.sw.on()
 
     @kernel
     def red_modulation_off(self,f_SF,A_SF):
@@ -296,38 +297,7 @@ class sequence_main(EnvExperiment):
             
             delay(t_com*ms)
 
-    @kernel
-    def mot_as_probe(self,probe_duration):
-         
-        self.red_mot_aom.sw.off()
-        self.blue_mot_aom.sw.off()
 
-        self.repump_shutter_679.off()
-        self.repump_shutter_707.off()
-
-        self.mot_coil_1.write_dac(0, 4.051)
-        self.mot_coil_2.write_dac(1, 4.088)
-
-        with parallel:
-            self.mot_coil_1.load()
-            self.mot_coil_2.load()
-
-        delay(4*ms)
-
-        with parallel:
-                self.camera_trigger.pulse(1*ms)
-                self.blue_mot_aom.set(frequency=90 * MHz, amplitude=0.06)
-                self.blue_mot_aom.sw.on()
-                
-        delay(probe_duration)
-
-        self.blue_mot_aom.sw.off()
-
-        #set coil field to zero
-        #wait for probe shutter to open
-
-        delay(10*ms)
-         
     @kernel 
     def seperate_probe(self,tof,probe_duration,probe_frequency):
             with parallel:
@@ -348,7 +318,7 @@ class sequence_main(EnvExperiment):
 
             with parallel:
                     self.camera_trigger.pulse(2*ms)
-                    self.probe_aom.set(frequency=probe_frequency, amplitude=0.17)
+                    self.probe_aom.set(frequency=probe_frequency, amplitude=0.14)
                     self.probe_aom.sw.on()
                     
             delay(probe_duration * ms)
@@ -521,9 +491,25 @@ class sequence_main(EnvExperiment):
         for j in range(int(self.cycles)):          #This runs the actual sequence
             delay(100*us)
 
+
             self.blue_mot_loading(
                  bmot_voltage_1 = self.blue_mot_coil_1_voltage,
                  bmot_voltage_2 = self.blue_mot_coil_2_voltage
+            )
+
+
+
+            delay(self.blue_mot_loading_time* ms)
+
+
+
+            self.blue_mot_compression(                           #Here we are ramping up the blue MOT field and ramping down the blue power
+                bmot_voltage_1 = self.blue_mot_coil_1_voltage,
+                bmot_voltage_2 = self.blue_mot_coil_2_voltage,
+                compress_bmot_volt_1 = self.compressed_blue_mot_coil_1_voltage,
+                compress_bmot_volt_2 = self.compressed_blue_mot_coil_2_voltage,
+                bmot_amp = 0.06,
+                compress_bmot_amp = 0.0035
             )
 
             self.red_modulation_on(
@@ -535,18 +521,12 @@ class sequence_main(EnvExperiment):
                 A_SWAP = 0.06,             #Amplitude during modulation
             )
 
-            delay(self.blue_mot_loading_time* ms)
 
-            self.blue_mot_compression(                           #Here we are ramping up the blue MOT field and ramping down the blue power
-                bmot_voltage_1 = self.blue_mot_coil_1_voltage,
-                bmot_voltage_2 = self.blue_mot_coil_2_voltage,
-                compress_bmot_volt_1 = self.compressed_blue_mot_coil_1_voltage,
-                compress_bmot_volt_2 = self.compressed_blue_mot_coil_2_voltage,
-                bmot_amp = 0.06,
-                compress_bmot_amp = 0.0035
-            )
+
+
 
             delay(self.blue_mot_compression_time*ms)
+
 
             delay(self.blue_mot_cooling_time*ms)   #Allowing further cooling of the cloud by just holding the atoms here
 
@@ -555,14 +535,17 @@ class sequence_main(EnvExperiment):
                 rmot_voltage_2 = self.bb_rmot_coil_2_voltage
             )
 
-            self.camera_shutter.on()    #Camera shutter takes 26ms to open so we will open it here
-
+        
             delay(self.broadband_red_mot_time*ms)
+
+
+            
 
             self.red_modulation_off(                   #switch to single frequency
                 f_SF = self.sf_frequency * MHz,
                 A_SF = 0.04
             )
+
 
             self.red_mot_compression(                         #Compressing the red MOT by ramping down power, field ramping currently not active
                 bb_rmot_volt_1 = self.bb_rmot_coil_1_voltage,
@@ -574,29 +557,37 @@ class sequence_main(EnvExperiment):
 
             delay(self.red_mot_compression_time*ms)
 
+            self.camera_shutter.on()    #Camera shutter takes 26ms to open so we will open it here
+
+
+
             delay(self.single_frequency_time*ms)
 
             self.red_mot_aom.sw.off()
 
+            self.clock_spectroscopy(
+                aom_frequency = 0*Hz,
+                pulse_time = 2000*ms,
+                B = 3.0
 
-            # self.clock_spectroscopy(
-            #     aom_frequency = 0*Hz,
-            #     pulse_time = 2000*ms,
-            #     B = 3.0
-
-            # )
+            )
 
 
-            #          #Switch to Helmholtz
-            # self.mot_coil_1.write_dac(0, 2.0)  
-            # self.mot_coil_2.write_dac(1, 8.0)
+                     #Switch to Helmholtz
+            self.mot_coil_1.write_dac(0, 2.0)  
+            self.mot_coil_2.write_dac(1, 8.0)
         
-            # with parallel:
-            #     self.mot_coil_1.load()
-            #     self.mot_coil_2.load()
+            with parallel:
+                self.mot_coil_1.load()
+                self.mot_coil_2.load()
 
-            # delay(50*ms)
+            delay(50*ms)
 
+            self.seperate_probe(
+                tof = self.time_of_flight,
+                probe_duration = 0.02*ms ,
+                probe_frequency= 200 * MHz
+            )
 
 
             # self.pmt_capture(
@@ -607,13 +598,8 @@ class sequence_main(EnvExperiment):
 
             # self.normalised_detection()
             
-            self.seperate_probe(
-                tof = self.time_of_flight,
-                probe_duration = 0.02 ,
-                probe_frequency= 200 * MHz
-            )
 
-            delay(100*ms)
+            delay(200*ms)
 
 
 
