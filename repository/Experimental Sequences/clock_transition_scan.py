@@ -588,6 +588,7 @@ class clock_transition_scan(EnvExperiment):
         # self.set_dataset("excitation_fraction_list", excitation_fraction_list, broadcast=True, archive=True)
         print(self.excitation_fraction_list[0:self.cycles])
 
-    def analyse():
+        data_table = [self.scan_frequency_values,self.excitation_fraction_list,self.gs_list,self.es_list]
 
-        self.set_dataset("Clock spectoscopy",self.scan_frequency_values,self.excitation_fraction_list,self.gs_list,self.es_list, broadcast=True, archive = True)
+        self.set_dataset("Clock spectoscopy", data_table, broadcast=True, archive = True)
+
