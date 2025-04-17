@@ -35,7 +35,7 @@ class bluemot_loading_time(EnvExperiment):
 
         self.setattr_argument("Cycles", NumberValue(default = 1))
         self.setattr_argument("Loading_Time", NumberValue(default = 3000 * ms))
-        self.setattr_argument("Holding_Time", NumberValue(default = 10))
+        self.setattr_argument("Holding_Time", NumberValue(default = 10 * ms))
        
     @kernel
     def run(self):
