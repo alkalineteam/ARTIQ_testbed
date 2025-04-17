@@ -585,7 +585,9 @@ class clock_transition_scan(EnvExperiment):
             
             delay(50*ms)
 
+        self.excitation_fraction_list = excitation_fraction_list
+
         print(excitation_fraction_list)
 
         self.set_dataset("excitation_fraction_list", excitation_fraction_list, broadcast=True, archive=True)
-        # print(self.excitation_fraction_list[1:cycles])
+        print(self.excitation_fraction_list[1:cycles])
