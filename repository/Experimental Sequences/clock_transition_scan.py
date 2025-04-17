@@ -65,8 +65,10 @@ class clock_transition_scan(EnvExperiment):
         self.scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
         self.cycles = len(self.scan_frequency_values)
 
-
+        self.gs_list = [0.0] * self.cycles
+        self.es_list = [0.0] * self.cycles
         self.excitation_fraction_list = [0.0] * self.cycles
+
 
 
     @kernel
@@ -258,8 +260,6 @@ class clock_transition_scan(EnvExperiment):
         with parallel:
             self.mot_coil_1.load()
             self.mot_coil_2.load()
-
-        
     
     @kernel
     def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2,frequency,red_mot_compression_time):
@@ -356,21 +356,6 @@ class clock_transition_scan(EnvExperiment):
         self.stepping_aom.set(frequency = 0 * Hz)
         self.stepping_aom.sw.off()
    
-    @rpc
-    def excitation_fraction(self,data):                                    #Calulates the excitation fraction from the sampler data and writes it to list for analysis later
-
-        atom_scalar = 10000    #Scalar value to convert from Volts to Atom No, needs calibrating often
-
-        background = numpy.max(numpy.array(data[900:1100]))
-        ground_state = ((numpy.max(numpy.array(data[0:200])) )- background ) * atom_scalar
-        excited_state = ((numpy.self.excitation_fraction(samples_ch0).max(numpy.array(data[500:700]))) - background) *atom_scalar
-
-        excitation_fraction = excited_state / (ground_state + excited_state)
-        
-
-
-
-     
 
     @kernel
     def normalised_detection(self,j,excitation_fraction_list):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
@@ -494,15 +479,6 @@ class clock_transition_scan(EnvExperiment):
 
         self.initialise_modules()
 
-        # #Setup frequency scan parameters
-        # scan_start = int32(self.scan_center_frequency_Hz - (self.scan_range_Hz/2))
-        # scan_end =int32(self.scan_center_frequency_Hz + (self.scan_range_Hz/2))
-        # scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
-        # cycles = len(scan_frequency_values)
-
-        # excitation_fraction_list = [0.0] * cycles
-
-
         #Sequence Parameters - Update these with optimised values
         bmot_compression_time = 20 
         blue_mot_cooling_time = 60 
@@ -525,6 +501,8 @@ class clock_transition_scan(EnvExperiment):
         
         for j in range(int32(self.cycles)):        
 
+            ####################################################### Blue MOT loading #############################################################
+
             delay(100*us)
 
             self.blue_mot_loading(
@@ -541,6 +519,8 @@ class clock_transition_scan(EnvExperiment):
 
             delay(self.blue_mot_loading_time* ms)
 
+            ####################################################### Blue MOT compression & cooling ########################################################
+
             self.blue_mot_compression(                           #Here we are ramping up the blue MOT field and ramping down the blue power
                 bmot_voltage_1 = blue_mot_coil_1_voltage,
                 bmot_voltage_2 = blue_mot_coil_2_voltage,
@@ -553,7 +533,10 @@ class clock_transition_scan(EnvExperiment):
 
             delay(bmot_compression_time*ms)    #Blue MOT compression time
 
+
             delay(blue_mot_cooling_time*ms)   #Allowing further cooling of the cloud by just holding the atoms here
+
+            ########################################################### BB red MOT #################################################################
 
             self.broadband_red_mot(                                  #Switch to low field gradient for Red MOT, switches off the blue beams
                 rmot_voltage_1= bb_rmot_coil_1_voltage,
@@ -561,6 +544,9 @@ class clock_transition_scan(EnvExperiment):
             )
 
             delay(broadband_red_mot_time*ms)
+
+
+            ########################################################### red MOT compression & Single Frequency ####################################################################
 
             self.red_modulation_off(                   #switch to single frequency
                 f_SF = sf_frequency * MHz,
@@ -579,7 +565,10 @@ class clock_transition_scan(EnvExperiment):
             delay(red_mot_compression_time*ms)
 
             delay(single_frequency_time*ms)
+
             self.red_mot_aom.sw.off()
+
+            #################################################################### Clock Spectroscopy ##################################################################################
 
             # delay(40*ms)
             self.clock_spectroscopy(
@@ -588,8 +577,6 @@ class clock_transition_scan(EnvExperiment):
             )
 
             self.normalised_detection(j,self.excitation_fraction_list)
-            
-
             
             delay(50*ms)
 
