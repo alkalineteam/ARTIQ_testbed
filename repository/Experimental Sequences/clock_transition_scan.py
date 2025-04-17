@@ -62,7 +62,7 @@ class clock_transition_scan(EnvExperiment):
         
         scan_start = int32(self.scan_center_frequency_Hz - (self.scan_range_Hz/2))
         scan_end =int32(self.scan_center_frequency_Hz + (self.scan_range_Hz/2))
-        self.scan_frequency_values = [x for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
+        self.scan_frequency_values = [float(x) for x in range(scan_start, scan_end, int32(self.scan_step_size_Hz))]
         self.cycles = len(self.scan_frequency_values)
 
         self.gs_list = [0.0] * self.cycles
@@ -460,8 +460,8 @@ class clock_transition_scan(EnvExperiment):
                     bg_max = num
         
         # excitation_fraction = (es_max - bg_max) / ((gs_max-bg_max) + (es_max-bg_max)) 
-        self.gs_list[j] = gs_max
-        self.es_list[j] = es_max
+        self.gs_list[j] = float(gs_max)
+        self.es_list[j] = float(es_max)
         self.excitation_fraction_list[j] = float(j)
         # # print(excitation_fraction)
         # # ef.append(self.excitation_fraction_list)
@@ -588,6 +588,8 @@ class clock_transition_scan(EnvExperiment):
         # self.set_dataset("excitation_fraction_list", excitation_fraction_list, broadcast=True, archive=True)
         print(self.excitation_fraction_list[0:self.cycles])
 
+        dataset = [self.scan_frequency_values,self.excitation_fraction_list,self.gs_list,self.es_list]
 
-        self.set_dataset("Clock spectoscopy", [float(self.scan_frequency_values),float(self.excitation_fraction_list),self.gs_list,self.es_list], broadcast=True, archive = True)
+
+        self.set_dataset("Clock spectoscopy",dataset, broadcast=True, archive = True)
 
