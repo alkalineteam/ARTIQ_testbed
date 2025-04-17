@@ -34,7 +34,7 @@ class bluemot_loading_time(EnvExperiment):
 
 
         self.setattr_argument("Cycles", NumberValue(default = 1))
-        self.setattr_argument("Loading_Time", NumberValue(default = 2000 * ms))
+        self.setattr_argument("Loading_Time", NumberValue(default = 2000))
         self.setattr_argument("blue_mot_coil_1_voltage", NumberValue(default=8.0))
         self.setattr_argument("blue_mot_coil_2_voltage", NumberValue(default=7.82))
         self.setattr_argument("time_of_flight", NumberValue(default=40))
