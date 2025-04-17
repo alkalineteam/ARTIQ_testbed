@@ -3,7 +3,7 @@ from artiq.coredevice.ttl import TTLOut
 from artiq.coredevice import ad9910
 from numpy import int64
 
-class bluemot_loading_time(EnvExperiment):
+class blue_mot_loading_timeV2(EnvExperiment):
     def build(self):
         self.setattr_device("core")
 
@@ -34,7 +34,7 @@ class bluemot_loading_time(EnvExperiment):
 
 
         self.setattr_argument("Cycles", NumberValue(default = 1))
-        self.setattr_argument("Loading_Time", NumberValue(default = 2000))
+        self.setattr_argument("loading_time", NumberValue(default = 2000))
         self.setattr_argument("blue_mot_coil_1_voltage", NumberValue(default=8.0))
         self.setattr_argument("blue_mot_coil_2_voltage", NumberValue(default=7.82))
         self.setattr_argument("time_of_flight", NumberValue(default=40))
@@ -57,7 +57,7 @@ class bluemot_loading_time(EnvExperiment):
         self.zeeman_slower_aom.init()
         self.probe_shutter.output()
 
-        self.sampler.init() 
+        #self.sampler.init() 
         
         # Set the channel ON
         self.blue_mot_aom.sw.on()
@@ -66,6 +66,45 @@ class bluemot_loading_time(EnvExperiment):
         self.probe_aom.init()
         
         delay(100*ms)
+
+
+
+
+
+    @kernel 
+    def seperate_probe(self,tof,probe_duration,probe_frequency):
+            with parallel:
+                self.red_mot_aom.sw.off()
+                self.blue_mot_aom.sw.off()
+                self.repump_shutter_679.off()
+                self.repump_shutter_707.off()
+                self.probe_shutter.on()
+
+            self.mot_coil_1.write_dac(0, 5.0)  
+            self.mot_coil_2.write_dac(1, 5.0)
+           
+            with parallel:
+                self.mot_coil_1.load()
+                self.mot_coil_2.load()
+
+            delay(((tof +3.9)*ms))
+
+            with parallel:
+                    self.camera_trigger.pulse(2*ms)
+                    self.probe_aom.set(frequency=probe_frequency, amplitude=0.14)
+                    self.probe_aom.sw.on()
+                    
+            delay(probe_duration * ms)
+                    
+            with parallel:
+                self.probe_shutter.off()
+                self.camera_shutter.off()    #Camera shutter takes 26ms to open so we will open it here
+                self.probe_aom.set(frequency=probe_frequency, amplitude=0.00)
+                self.probe_aom.sw.off()
+
+            delay(10*ms)
+
+
 
     @kernel
     def blue_mot_loading(self,bmot_voltage_1,bmot_voltage_2):
@@ -108,13 +147,26 @@ class bluemot_loading_time(EnvExperiment):
 
 
             # BlueMOT loading with field constant
-            with parallel:
-                self.blue_mot_loading(
-                    bmot_voltage_1 = self.blue_mot_coil_1_voltage,
-                    bmot_voltage_2 = self.blue_mot_coil_2_voltage,
+            
+            self.blue_mot_loading(
+                bmot_voltage_1 = self.blue_mot_coil_1_voltage,
+                bmot_voltage_2 = self.blue_mot_coil_2_voltage,
 
-                )
+            )
 
-                delay(self.blue_mot_loading_time * ms)
+            delay(self.loading_time * ms)
+            print("loop")
 
+            self.blue_mot_aom.sw.off()
+            self.zeeman_slower_aom.sw.off()
+            self.repump_shutter_679.off()
+            self.repump_shutter_707.off()
+
+            # self.seperate_probe(
+            #     tof = 0*ms,
+            #     probe_duration = 0.2*ms,
+            #     probe_frequency = 200 * MHz
+            # )
+
+            delay(400*ms)
             ####################################################################################
