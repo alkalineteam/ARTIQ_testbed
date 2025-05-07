@@ -15,7 +15,7 @@ default_cfr2 = (
     | (1 << 24) # the amplitude is scaled by the ASF from the active profile (without this, the DDS outputs max. possible amplitude -> cracked AOM crystals)
 )
 
-class blue_mot_loading_v3(EnvExperiment):
+class b_mot_loading_v3(EnvExperiment):
 
     def build(self):
         self.setattr_device("core")
@@ -498,10 +498,10 @@ class blue_mot_loading_v3(EnvExperiment):
                  bmot_voltage_2 = self.blue_mot_coil_2_voltage
             )
 
-
-
             delay(self.blue_mot_loading_time* ms)
 
+
+            self.zeeman_slower_aom.sw.off()
 
 
 
