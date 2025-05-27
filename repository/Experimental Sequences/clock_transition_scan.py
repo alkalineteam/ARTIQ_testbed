@@ -116,86 +116,6 @@ class clock_transition_scan(EnvExperiment):
         delay(100*ms)
 
     @kernel
-    def red_modulation_on(self,f_SWAP_start,f_SWAP_end,T_SWAP,A_SWAP):          #state = 1 for modulation ON, 0 for modulation OFF
-
-        self.red_mot_aom.set_att(0.0)
-
-        cfr2 = (
-            default_cfr2
-            | (1 << 19) # enable digital ramp generator
-            | (1 << 18) # enable no-dwell high functionality
-            | (1 << 17) # enable no-dwell low functionality
-        )
- 
-        f_step = (f_SWAP_end - f_SWAP_start) * 4*ns / T_SWAP
-
-        #f_start_ftw = self.red_mot_aom.frequency_to_ftw(f_start)
-        #A_start_mu = int32(round(A_start * 0x3fff)) << 16
-        f_SWAP_start_ftw = self.red_mot_aom.frequency_to_ftw(f_SWAP_start)
-        f_SWAP_end_ftw = self.red_mot_aom.frequency_to_ftw(f_SWAP_end)
-        f_step_ftw = self.red_mot_aom.frequency_to_ftw((f_SWAP_end - f_SWAP_start) * 4*ns / T_SWAP)
-        f_step_short_ftw = self.red_mot_aom.frequency_to_ftw(f_SWAP_end - f_SWAP_start)
-        A_SWAP_mu = int32(round(A_SWAP * 0x3fff)) << 16
-
-
-            # ----- Prepare for ramp -----
-        # set profile parameters
-        self.red_mot_aom.write64(
-            ad9910._AD9910_REG_PROFILE7,
-            A_SWAP_mu,
-            f_SWAP_start_ftw
-        )
-
-        # set ramp limits
-        self.red_mot_aom.write64(
-            ad9910._AD9910_REG_RAMP_LIMIT,
-            f_SWAP_end_ftw,
-            f_SWAP_start_ftw,
-        )
-
-        # set time step
-        self.red_mot_aom.write32(
-            ad9910._AD9910_REG_RAMP_RATE,
-            ((1 << 16) | (1 << 0))
-        )
-
-        # set frequency step
-        self.red_mot_aom.write64(
-            ad9910._AD9910_REG_RAMP_STEP,
-            f_step_short_ftw,
-            f_step_ftw
-        )
-        # set control register
-        self.red_mot_aom.write32(ad9910._AD9910_REG_CFR2, cfr2)
-
-        # safety delay, try decreasing if everything works
-        delay(10*us)
-
-        # start ramp
-        self.red_mot_aom.cpld.io_update.pulse_mu(8)
-
-    @kernel
-    def red_modulation_off(self,f_SF,A_SF):                                      #Switch to single frequency
-
-        f_SF_ftw = self.red_mot_aom.frequency_to_ftw(f_SF)
-        A_SF_mu = int32(round(A_SF * 0x3fff)) << 16
-
-                        # stop ramp
-        # ----- Prepare for values after end of ramp -----
-        self.red_mot_aom.write64(
-            ad9910._AD9910_REG_PROFILE7,
-            A_SF_mu,
-            f_SF_ftw
-        )
-
-        # prepare control register for ramp end
-        self.red_mot_aom.write32(ad9910._AD9910_REG_CFR2, default_cfr2)
-
-        self.red_mot_aom.cpld.io_update.pulse_mu(8)
-
-        # self.red_mot_aom.set_att(19*dB)
-
-    @kernel
     def blue_mot_loading(self,bmot_voltage_1,bmot_voltage_2):                  
         self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
         self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
@@ -253,6 +173,7 @@ class clock_transition_scan(EnvExperiment):
         self.repump_shutter_679.off()
         self.repump_shutter_707.off()
         self.blue_mot_shutter.off()
+        delay(3.9*ms)
 
         self.mot_coil_1.write_dac(0, rmot_voltage_1)
         self.mot_coil_2.write_dac(1, rmot_voltage_2)
@@ -262,15 +183,24 @@ class clock_transition_scan(EnvExperiment):
             self.mot_coil_2.load()
     
     @kernel
-    def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2,frequency,red_mot_compression_time):
+    def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2,f_start,f_end,A_start,A_end):
 
-        bb_rmot_amp=0.05
-        compress_rmot_amp=0.008
+        start_freq = 80.7
+        end_freq = 81
 
-        steps_com = red_mot_compression_time 
-        t_com = red_mot_compression_time/steps_com
+
+        bb_rmot_amp = A_start
+        compress_rmot_amp= A_end
+
+        comp_time = self.red_mot_compression_time
+        step_duration = 0.1
+        steps_com = int(comp_time / step_duration)  
+
+        freq_steps = (start_freq - end_freq)/steps_com
+
         volt_1_steps = (sf_rmot_volt_1 - bb_rmot_volt_1)/steps_com
         volt_2_steps = (sf_rmot_volt_2 - bb_rmot_volt_2)/steps_com
+
 
         amp_steps = (bb_rmot_amp-compress_rmot_amp)/steps_com
         
@@ -279,6 +209,7 @@ class clock_transition_scan(EnvExperiment):
             voltage_1 = bb_rmot_volt_1 + ((i+1) * volt_1_steps)
             voltage_2 = bb_rmot_volt_2 + ((i+1) * volt_2_steps)
             amp = bb_rmot_amp - ((i+1) * amp_steps)
+            freq = start_freq - ((i+1) * freq_steps)
 
             self.mot_coil_1.write_dac(0, voltage_1)
             self.mot_coil_2.write_dac(1, voltage_2)
@@ -286,9 +217,10 @@ class clock_transition_scan(EnvExperiment):
             with parallel:
                 self.mot_coil_1.load()
                 self.mot_coil_2.load()
-                self.red_mot_aom.set(frequency = frequency * MHz, amplitude = amp)
+                self.red_mot_aom.set(frequency = freq * MHz, amplitude = amp)
+                
             
-            delay(t_com*ms)
+            delay(step_duration*ms)
         
     @kernel 
     def seperate_probe(self,tof,probe_duration,probe_frequency):               #Only triggers the camera, and seperate probe
@@ -483,21 +415,24 @@ class clock_transition_scan(EnvExperiment):
         #Sequence Parameters - Update these with optimised values
         bmot_compression_time = 20 
         blue_mot_cooling_time = 60 
-        broadband_red_mot_time = 15
-        red_mot_compression_time = 10
-        single_frequency_time = 15
+        broadband_red_mot_time = 10
+        red_mot_compression_time = 5
+        single_frequency_time = 25
         time_of_flight = 0 
         blue_mot_coil_1_voltage = 8.0
-        blue_mot_coil_2_voltage = 7.82
-        compressed_blue_mot_coil_1_voltage = 8.55
-        compressed_blue_mot_coil_2_voltage = 8.34
+        blue_mot_coil_2_voltage = 7.9
+        compressed_blue_mot_coil_1_voltage = 8.62
+        compressed_blue_mot_coil_2_voltage = 8.39
         bmot_amp = 0.06
         compress_bmot_amp = 0.0035
-        bb_rmot_coil_1_voltage = 5.3
-        bb_rmot_coil_2_voltage = 5.28
-        sf_rmot_coil_1_voltage = 5.7
-        sf_rmot_coil_2_voltage = 5.66
-        sf_frequency = 80.92 
+        bb_rmot_coil_1_voltage = 5.24
+        bb_rmot_coil_2_voltage = 5.22
+        sf_rmot_coil_1_voltage = 5.72
+        sf_rmot_coil_2_voltage = 5.64
+        rmot_f_start = 80.7,
+        rmot_f_end = 81,
+        rmot_A_start = 0.03,
+        rmot_A_end = 0.005,
 
         
         for j in range(int32(self.cycles)):        
@@ -511,12 +446,11 @@ class clock_transition_scan(EnvExperiment):
                  bmot_voltage_2 = blue_mot_coil_2_voltage
             )
 
-            self.red_modulation_on(
-                f_SWAP_start = 80 * MHz,   #Ramp lower limit
-                f_SWAP_end = 81 * MHz,     #Ramp upper limit
-                T_SWAP = 40 * us,          #Time spent on each step, 40us is equivalent to 25kHz modulation rate
-                A_SWAP = 0.06,             #Amplitude during modulation
-            )
+           
+            self.red_mot_aom.set(frequency = 80.5 *MHz, amplitude = 0.07)
+            self.red_mot_aom.sw.on()
+
+
 
             delay(self.blue_mot_loading_time* ms)
 
@@ -549,18 +483,16 @@ class clock_transition_scan(EnvExperiment):
 
             ########################################################### red MOT compression & Single Frequency ####################################################################
 
-            self.red_modulation_off(                   #switch to single frequency
-                f_SF = sf_frequency * MHz,
-                A_SF = 0.04
-            )
 
             self.red_mot_compression(                         #Compressing the red MOT by ramping down power, field ramping currently not active
                 bb_rmot_volt_1 = bb_rmot_coil_1_voltage,
                 bb_rmot_volt_2 = bb_rmot_coil_2_voltage,
                 sf_rmot_volt_1 = sf_rmot_coil_1_voltage,
                 sf_rmot_volt_2 = sf_rmot_coil_2_voltage,
-                frequency = sf_frequency,
-                red_mot_compression_time=red_mot_compression_time
+                f_start = rmot_f_start,
+                f_end = rmot_f_end,
+                A_start = rmot_A_start,
+                A_end = rmot_A_end
             )
 
             delay(red_mot_compression_time*ms)
@@ -581,15 +513,15 @@ class clock_transition_scan(EnvExperiment):
             
             delay(50*ms)
 
-        self.excitation_fraction_list = self.excitation_fraction_list
+        # self.excitation_fraction_list = self.excitation_fraction_list
 
-        print(self.excitation_fraction_list)
+        # print(self.excitation_fraction_list)
 
-        # self.set_dataset("excitation_fraction_list", excitation_fraction_list, broadcast=True, archive=True)
-        print(self.excitation_fraction_list[0:self.cycles])
+        # # self.set_dataset("excitation_fraction_list", excitation_fraction_list, broadcast=True, archive=True)
+        # print(self.excitation_fraction_list[0:self.cycles])
 
-        dataset = [self.scan_frequency_values,self.excitation_fraction_list,self.gs_list,self.es_list]
+        # dataset = [self.scan_frequency_values,self.excitation_fraction_list,self.gs_list,self.es_list]
 
 
-        self.set_dataset("Clock spectoscopy",dataset, broadcast=True, archive = True)
+        # self.set_dataset("Clock spectoscopy",dataset, broadcast=True, archive = True)
 

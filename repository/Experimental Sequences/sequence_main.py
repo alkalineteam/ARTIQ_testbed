@@ -122,88 +122,6 @@ class sequence_main(EnvExperiment):
         delay(100*ms)
 
     @kernel
-    def red_modulation_on(self,f_start,A_start,f_SWAP_start,f_SWAP_end,T_SWAP,A_SWAP):          #state = 1 for modulation ON, 0 for modulation OFF
-
-        self.red_mot_aom.set_att(0.0)
-
-        cfr2 = (
-            default_cfr2
-            | (1 << 19) # enable digital ramp generator
-            | (1 << 18) # enable no-dwell high functionality
-            | (1 << 17) # enable no-dwell low functionality
-        )
- 
-        f_step = (f_SWAP_end - f_SWAP_start) * 4*ns / T_SWAP
-
-        #f_start_ftw = self.red_mot_aom.frequency_to_ftw(f_start)
-        #A_start_mu = int32(round(A_start * 0x3fff)) << 16
-        f_SWAP_start_ftw = self.red_mot_aom.frequency_to_ftw(f_SWAP_start)
-        f_SWAP_end_ftw = self.red_mot_aom.frequency_to_ftw(f_SWAP_end)
-        f_step_ftw = self.red_mot_aom.frequency_to_ftw((f_SWAP_end - f_SWAP_start) * 4*ns / T_SWAP)
-        f_step_short_ftw = self.red_mot_aom.frequency_to_ftw(f_SWAP_end - f_SWAP_start)
-        A_SWAP_mu = int32(round(A_SWAP * 0x3fff)) << 16
-
-
-            # ----- Prepare for ramp -----
-        # set profile parameters
-        self.red_mot_aom.write64(
-            ad9910._AD9910_REG_PROFILE7,
-            A_SWAP_mu,
-            f_SWAP_start_ftw
-        )
-
-        # set ramp limits
-        self.red_mot_aom.write64(
-            ad9910._AD9910_REG_RAMP_LIMIT,
-            f_SWAP_end_ftw,
-            f_SWAP_start_ftw,
-        )
-
-        # set time step
-        self.red_mot_aom.write32(
-            ad9910._AD9910_REG_RAMP_RATE,
-            ((1 << 16) | (1 << 0))
-        )
-
-        # set frequency step
-        self.red_mot_aom.write64(
-            ad9910._AD9910_REG_RAMP_STEP,
-            f_step_short_ftw,
-            f_step_ftw
-        )
-        # set control register
-        self.red_mot_aom.write32(ad9910._AD9910_REG_CFR2, cfr2)
-
-        # safety delay, try decreasing if everything works
-        delay(10*us)
-
-        # start ramp
-        self.red_mot_aom.cpld.io_update.pulse_mu(8)
-        self.red_mot_aom.sw.on()
-
-    @kernel
-    def red_modulation_off(self,f_SF,A_SF):
-
-        f_SF_ftw = self.red_mot_aom.frequency_to_ftw(f_SF)
-        A_SF_mu = int32(round(A_SF * 0x3fff)) << 16
-
-                        # stop ramp
-        # ----- Prepare for values after end of ramp -----
-        self.red_mot_aom.write64(
-            ad9910._AD9910_REG_PROFILE7,
-            A_SF_mu,
-            f_SF_ftw
-        )
-
-        # prepare control register for ramp end
-        self.red_mot_aom.write32(ad9910._AD9910_REG_CFR2, default_cfr2)
-
-        self.red_mot_aom.cpld.io_update.pulse_mu(8)
-     
-
-        # self.red_mot_aom.set_att(19*dB)
-
-    @kernel
     def blue_mot_loading(self,bmot_voltage_1,bmot_voltage_2):
         self.blue_mot_aom.set(frequency= 90 * MHz, amplitude=0.06)
         self.zeeman_slower_aom.set(frequency= 70 * MHz, amplitude=0.08)
@@ -272,15 +190,11 @@ class sequence_main(EnvExperiment):
             delay(self.broadband_red_mot_time*ms)
 
     @kernel
-    def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2,frequency,A_start,A_end):
+    def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2,f_start,f_end,A_start,A_end):
 
 
         start_freq = 80.7
         end_freq = 81
-
-
-    
-
 
 
         bb_rmot_amp = A_start
@@ -292,8 +206,6 @@ class sequence_main(EnvExperiment):
 
         freq_steps = (start_freq - end_freq)/steps_com
 
-        # steps_com = self.red_mot_compression_time 
-        # t_com = self.red_mot_compression_time/steps_com
         volt_1_steps = (sf_rmot_volt_1 - bb_rmot_volt_1)/steps_com
         volt_2_steps = (sf_rmot_volt_2 - bb_rmot_volt_2)/steps_com
 
@@ -555,14 +467,6 @@ class sequence_main(EnvExperiment):
                  bmot_voltage_2 = self.blue_mot_coil_2_voltage
             )
 
-            # self.red_modulation_on(
-            #     f_start = 80 * MHz,        #Starting frequency of the ramp
-            #     A_start = 0.06,            #initial amplitude of the ramp
-            #     f_SWAP_start = 80* MHz,   #Ramp lower limit
-            #     f_SWAP_end = 81 * MHz,     #Ramp upper limit
-            #     T_SWAP = 40 * us,          #Time spent on each step, 40us is equivalent to 25kHz modulation rate
-            #     A_SWAP = 0.04,             #Amplitude during modulation
-            # )
 
             self.red_mot_aom.set(frequency = 80.5 *MHz, amplitude = 0.07)
             self.red_mot_aom.sw.on()
@@ -581,15 +485,10 @@ class sequence_main(EnvExperiment):
                 compress_bmot_amp = 0.0035
             )
 
-
             delay(self.blue_mot_compression_time*ms)
 
 
-
             delay(self.blue_mot_cooling_time*ms)   #Allowing further cooling of the cloud by just holding the atoms here
-
-
-  
 
             self.broadband_red_mot(                                  #Switch to low field gradient for Red MOT, switches off the blue beams
                 rmot_voltage_1= self.bb_rmot_coil_1_voltage,
@@ -598,26 +497,14 @@ class sequence_main(EnvExperiment):
 
             delay(self.broadband_red_mot_time*ms)
 
-
-
-
-            # self.red_modulation_off(                   #switch to single frequency
-            #     f_SF = self.sf_frequency * MHz,
-            #     A_SF = 0.03
-            # )
-
-
-
-
-
-
         
             self.red_mot_compression(                         #Compressing the red MOT by ramping down power, field ramping currently not active
                 bb_rmot_volt_1 = self.bb_rmot_coil_1_voltage,
                 bb_rmot_volt_2 = self.bb_rmot_coil_2_voltage,
                 sf_rmot_volt_1 = self.sf_rmot_coil_1_voltage,
                 sf_rmot_volt_2 = self.sf_rmot_coil_2_voltage,
-                frequency= self.sf_frequency,
+                f_start = 80.7,
+                f_end = 81,
                 A_start = 0.03,
                 A_end = 0.005
             )
@@ -629,17 +516,6 @@ class sequence_main(EnvExperiment):
 
             delay(self.single_frequency_time*ms)
 
-            # self.red_mot_compression_two(                         #Compressing the red MOT by ramping down power, field ramping currently not active
-            #     bb_rmot_volt_1 = self.sf_rmot_coil_1_voltage,
-            #     bb_rmot_volt_2 = self.bb_rmot_coil_2_voltage,
-            #     sf_rmot_volt_1 = 5.1,
-            #     sf_rmot_volt_2 = 5.1,
-            #     frequency= self.sf_frequency,
-            #     A_start = 0.006,
-            #     A_end = 0.003
-            # )
-
-            # delay(10*ms)
 
 
             self.seperate_probe(
