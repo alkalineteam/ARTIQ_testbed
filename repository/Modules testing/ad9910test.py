@@ -4,7 +4,7 @@ from numpy import int64, int32
 class TestAD9910(EnvExperiment):
     def build(self):
         self.setattr_device("core")
-        self.ad9910_0=self.get_device("urukul0_ch3") 
+        self.ad9910_0=self.get_device("urukul0_ch0") 
     
         self.setattr_argument("Number_of_pulse", NumberValue(default=10))
         self.setattr_argument("Pulse_width", NumberValue(default=1000)) 
@@ -31,7 +31,7 @@ class TestAD9910(EnvExperiment):
 
 
         '''Single Frequency Output'''
-        self.ad9910_0.set(frequency=200*MHz, amplitude=0.15)
+        self.ad9910_0.set(frequency=80*MHz, amplitude=0.06)
 
 
 

@@ -34,13 +34,13 @@ class ad9910_drg(EnvExperiment):
             | (1 << 18) # enable no-dwell high functionality
             | (1 << 17) # enable no-dwell low functionality
         )
-        f_start = 0*MHz                          #Starting frequency
+        f_start = 80*MHz                          #Starting frequency
         A_start = 0.05                             #Starting amplitude
         f_SWAP_start = 80*MHz
         f_SWAP_end = 81*MHz
         T_SWAP = 40*us           #Time spent on each step  40us corresponding to 25kHz rate
         A_SWAP = 0.08
-        f_SF = 80.92*MHz          #Single frequency red MOT frequency and amplitude
+        f_SF = 80.0*MHz          #Single frequency red MOT frequency and amplitude
         A_SF = 0.05
         f_step = (f_SWAP_end - f_SWAP_start) * 4*ns / T_SWAP
 
@@ -116,7 +116,7 @@ class ad9910_drg(EnvExperiment):
         # prepare control register for ramp end
         self.ad9910_0.write32(ad9910._AD9910_REG_CFR2, default_cfr2)
         # ramp duration
-        delay(1*s)
+        delay(5*s)
         # stop ramp
         self.ad9910_0.cpld.io_update.pulse_mu(8)
 
@@ -126,7 +126,11 @@ class ad9910_drg(EnvExperiment):
         # ======================
 
         # ------------------------------------------------------------------------
-        delay(10*s)
-        self.ad9910_0.sw.off()
+        delay(5*s)
+
+        # self.ad9910_0.set(frequency = 80*MHz, amplitude = 0.06)
+        # delay(5*s)
+
+
         # ch.experiment_trigger.off()
         delay(10*ms)

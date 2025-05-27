@@ -167,6 +167,8 @@ class redmot_time_of_flight(EnvExperiment):
         # start ramp
         self.red_mot_aom.cpld.io_update.pulse_mu(8)
 
+        self.red_mot_aom.sw.on()
+
 
     @kernel
     def red_modulation_off(self,f_SF,A_SF):
@@ -260,8 +262,8 @@ class redmot_time_of_flight(EnvExperiment):
     @kernel
     def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2,frequency):
 
-        bb_rmot_amp=0.04
-        compress_rmot_amp=0.008
+        bb_rmot_amp=0.03
+        compress_rmot_amp=0.0003
 
         steps_com = self.red_mot_compression_time 
         t_com = self.red_mot_compression_time/steps_com
@@ -343,7 +345,7 @@ class redmot_time_of_flight(EnvExperiment):
                 self.probe_aom.set(frequency=probe_frequency, amplitude=0.14)
                 self.probe_aom.sw.on()
                 
-        delay(probe_duration * ms)
+        delay(probe_duration)
                 
         with parallel:
             self.probe_shutter.off()
@@ -364,43 +366,42 @@ class redmot_time_of_flight(EnvExperiment):
 
         
              
-            
+        j=0
 
         for j in range(int(self.cycles)):          #This runs the actual sequence
 
-            if j <= 5:
+            if j < 5:
                     
                 delay(100*us)
 
                 self.red_mot_aom.sw.off()
                 self.blue_mot_loading(
-                    bmot_voltage_1 = self.blue_mot_coil_1_voltage,
-                    bmot_voltage_2 = self.blue_mot_coil_2_voltage
+                    bmot_voltage_1 = 5.0,
+                    bmot_voltage_2 = 5.0
                 )
 
                 delay(self.blue_mot_loading_time* ms)
 
    
-                # self.red_modulation_on(
-                #     f_start = 80 * MHz,
-                #     A_start = 0.06,
-                #     f_SWAP_start = 80 * MHz,
-                #     f_SWAP_end = 81 * MHz,
-                #     T_SWAP = 40 * us,
-                #     A_SWAP = 0.06,
-                #     f_SF = 80.92 * MHz,
-                #     A_SF = 0.05
-                # )
+                self.red_modulation_on(
+                    f_start = 80 * MHz,
+                    A_start = 0.06,
+                    f_SWAP_start = 80 * MHz,
+                    f_SWAP_end = 81 * MHz,
+                    T_SWAP = 40 * us,
+                    A_SWAP = 0.03,
+                    f_SF = 80.92 * MHz,
+                    A_SF = 0.05
+                )
 
                 self.blue_mot_compression(
-                    bmot_voltage_1 = self.blue_mot_coil_1_voltage,
-                    bmot_voltage_2 = self.blue_mot_coil_2_voltage,
-                    compress_bmot_volt_1 =self.compressed_blue_mot_coil_1_voltage,
-                    compress_bmot_volt_2 = self.compressed_blue_mot_coil_2_voltage,
+                    bmot_voltage_1 = 5.0,
+                    bmot_voltage_2 = 5.0,
+                    compress_bmot_volt_1 = 5.0,
+                    compress_bmot_volt_2 = 5.0,
                     bmot_amp = 0.06,
-                    compress_bmot_amp = 0.0035
+                    compress_bmot_amp = 0.003
                 )
-                self.red_mot_aom.sw.off()
 
                 delay(self.blue_mot_compression_time*ms)
 
@@ -418,7 +419,7 @@ class redmot_time_of_flight(EnvExperiment):
 
                 self.red_modulation_off(                   #switch to single frequency
                     f_SF = self.sf_frequency * MHz,
-                    A_SF = 0.04
+                    A_SF = 0.03
                 )
 
                 self.red_mot_compression(                         #Compressing the red MOT by ramping down power, field ramping currently not active
@@ -463,8 +464,20 @@ class redmot_time_of_flight(EnvExperiment):
                     bmot_voltage_2 = self.blue_mot_coil_2_voltage
                 )
 
-                delay(self.blue_mot_loading_time* ms)
+                self.red_modulation_on(
+                    f_start = 80 * MHz,
+                    A_start = 0.06,
+                    f_SWAP_start = 80 * MHz,
+                    f_SWAP_end = 81 * MHz,
+                    T_SWAP = 40 * us,
+                    A_SWAP = 0.03,
+                    f_SF = 80.92 * MHz,
+                    A_SF = 0.03
+                )
 
+
+
+                delay(self.blue_mot_loading_time* ms)
 
 
 
@@ -478,16 +491,6 @@ class redmot_time_of_flight(EnvExperiment):
                     compress_bmot_amp = 0.003
                 )
 
-                self.red_modulation_on(
-                    f_start = 80 * MHz,
-                    A_start = 0.06,
-                    f_SWAP_start = 80 * MHz,
-                    f_SWAP_end = 81 * MHz,
-                    T_SWAP = 40 * us,
-                    A_SWAP = 0.06,
-                    f_SF = 80.92 * MHz,
-                    A_SF = 0.06
-                )
 
 
                 delay(self.blue_mot_compression_time*ms)
@@ -495,7 +498,7 @@ class redmot_time_of_flight(EnvExperiment):
 
                 delay(self.blue_mot_cooling_time*ms)   #Allowing further cooling of the cloud
 
-
+ 
 
                 self.broadband_red_mot(
                     rmot_voltage_1= self.bb_rmot_coil_1_voltage,
@@ -507,7 +510,7 @@ class redmot_time_of_flight(EnvExperiment):
 
                 self.red_modulation_off(                   #switch to single frequency
                     f_SF = self.sf_frequency * MHz,
-                    A_SF = 0.04
+                    A_SF = 0.03
                 )
 
 
@@ -524,13 +527,14 @@ class redmot_time_of_flight(EnvExperiment):
           
                 delay(self.single_frequency_time*ms)
 
-                self.red_mot_aom.sw.off()
 
                 self.seperate_probe(
                     tof = self.time_of_flight,
-                    probe_duration = 0.2 * ms,
-                    probe_frequency= 200 * MHz
+                    probe_duration = 0.5 * ms,
+                    probe_frequency= 205 * MHz
                 )
+
+
 
 
                 delay(200*ms)
