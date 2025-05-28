@@ -6,15 +6,6 @@ from artiq.coredevice.sampler import Sampler
 import numpy as np
 
 
-default_cfr1 = (
-    (1 << 1)    # configures the serial data I/O pin (SDIO) as an input only pin; 3-wire serial programming mode
-)
-default_cfr2 = (
-    (1 << 5)    # forces the SYNC_SMP_ERR pin to a Logic 0; this pin indicates (active high) detection of a synchronization pulse sampling error
-    | (1 << 16) # a serial I/O port read operation of the frequency tuning word register reports the actual 32-bit word appearing at the input to the DDS phase accumulator (i.e. not the contents of the frequency tuning word register)
-    | (1 << 24) # the amplitude is scaled by the ASF from the active profile (without this, the DDS outputs max. possible amplitude -> cracked AOM crystals)
-)
-
 class sequence_main(EnvExperiment):
 
     def build(self):
@@ -193,15 +184,15 @@ class sequence_main(EnvExperiment):
     def red_mot_compression(self,bb_rmot_volt_1,bb_rmot_volt_2,sf_rmot_volt_1,sf_rmot_volt_2,f_start,f_end,A_start,A_end):
 
 
-        start_freq = 80.7
-        end_freq = 81
+        start_freq = f_start
+        end_freq = f_end
 
 
         bb_rmot_amp = A_start
         compress_rmot_amp= A_end
 
         comp_time = self.red_mot_compression_time
-        step_duration = 0.1
+        step_duration = 0.05
         steps_com = int(comp_time / step_duration)  
 
         freq_steps = (start_freq - end_freq)/steps_com
@@ -373,9 +364,9 @@ class sequence_main(EnvExperiment):
 
 
     @kernel
-    def normalised_detection(self):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
+    def normalised_detection(self,j,excitation_fraction_list):        #This function should be sampling from the PMT at the same time as the camera being triggered for seperate probe
         self.core.break_realtime()
-        sample_period = 1 / 20000      #10kHz sampling rate should give us enough data points
+        sample_period = 1 / 40000      #10kHz sampling rate should give us enough data points
         sampling_duration = 0.06      #30ms sampling time to allow for all the imaging slices to take place
 
         num_samples = int32(sampling_duration/sample_period)
@@ -397,14 +388,14 @@ class sequence_main(EnvExperiment):
                     self.mot_coil_1.load()
                     self.mot_coil_2.load()
 
-                delay(3.9*ms)     #wait for shutter to open
+                delay(4.1*ms)     #wait for shutter to open
 
                 with parallel:
                     self.camera_trigger.pulse(1*ms)
-                    self.probe_aom.set(frequency=200 * MHz, amplitude=0.17)
+                    self.probe_aom.set(frequency=205 * MHz, amplitude=0.18)
                     self.probe_aom.sw.on()
 
-                delay(0.2 * ms)      #Ground state probe duration            
+                delay(2* ms)      #Ground state probe duration            
                 
                 with parallel:
                     self.probe_shutter.off()
@@ -424,30 +415,66 @@ class sequence_main(EnvExperiment):
                 delay(3.9*ms) 
 
                 self.probe_aom.sw.on()
-                delay(0.2*ms)            #Ground state probe duration
+                delay(0.8*ms)            #Ground state probe duration
                 self.probe_aom.sw.off()
+                self.probe_shutter.off()
+                delay(10*ms)
+                self.probe_shutter.on()
+                delay(4.1*ms)
 
-                delay(20*ms)
+
                 #  ########################Background############################
  
                 self.probe_aom.sw.on()
-                delay(0.2*ms)            #Ground state probe duration
+                delay(0.8*ms)            #Ground state probe duration
                 self.probe_aom.sw.off()
                 self.probe_shutter.off()
 
                 delay(7*ms)
                 
             with sequential:
-                for j in range(num_samples):
-                    self.sampler.sample(samples[j])
+                for k in range(num_samples):
+                    self.sampler.sample(samples[k])
                     delay(sample_period*s)
                 
-
         delay(sampling_duration*s)
 
-
         samples_ch0 = [i[0] for i in samples]
-        self.set_dataset("normalised_detection", samples_ch0, broadcast=True, archive=True)
+
+        self.set_dataset("excitation_fraction", samples_ch0, broadcast=True, archive=True)
+
+        # print(self.excitation_fraction(samples_ch0))
+                                 
+
+        gs = samples_ch0[0:200]
+        es = samples_ch0[500:700]
+        bg = samples_ch0[900:1100]
+
+        gs_max = gs[0]
+        es_max = es[0]
+        bg_max = bg[0]
+
+        # Loop through the rest of the list
+
+        with parallel:
+            for num in gs[1:]:
+                if num > gs_max:
+                    gs_max = num
+
+            for num in es[1:]:
+                if num > es_max:
+                    es_max = num
+
+            for num in bg[1:]:
+                if num > bg_max:
+                    bg_max = num
+        
+        # excitation_fraction = (es_max - bg_max) / ((gs_max-bg_max) + (es_max-bg_max)) 
+        self.gs_list[j] = float(gs_max)
+        self.es_list[j] = float(es_max)
+        self.excitation_fraction_list[j] = float(j)
+        # # print(excitation_fraction)
+        # # ef.append(self.excitation_fraction_list)
 
 
 
@@ -468,7 +495,7 @@ class sequence_main(EnvExperiment):
             )
 
 
-            self.red_mot_aom.set(frequency = 80.5 *MHz, amplitude = 0.07)
+            self.red_mot_aom.set(frequency = 80.45 *MHz, amplitude = 0.08)
             self.red_mot_aom.sw.on()
 
 
@@ -490,6 +517,8 @@ class sequence_main(EnvExperiment):
 
             delay(self.blue_mot_cooling_time*ms)   #Allowing further cooling of the cloud by just holding the atoms here
 
+
+
             self.broadband_red_mot(                                  #Switch to low field gradient for Red MOT, switches off the blue beams
                 rmot_voltage_1= self.bb_rmot_coil_1_voltage,
                 rmot_voltage_2 = self.bb_rmot_coil_2_voltage
@@ -497,25 +526,27 @@ class sequence_main(EnvExperiment):
 
             delay(self.broadband_red_mot_time*ms)
 
-        
+            self.red_mot_aom.set(frequency = 80.55 *MHz, amplitude = 0.06)
+
+            delay(5*ms)
+
             self.red_mot_compression(                         #Compressing the red MOT by ramping down power, field ramping currently not active
                 bb_rmot_volt_1 = self.bb_rmot_coil_1_voltage,
                 bb_rmot_volt_2 = self.bb_rmot_coil_2_voltage,
                 sf_rmot_volt_1 = self.sf_rmot_coil_1_voltage,
                 sf_rmot_volt_2 = self.sf_rmot_coil_2_voltage,
-                f_start = 80.7,
+                f_start = 80.6,
                 f_end = 81,
                 A_start = 0.03,
-                A_end = 0.005
+                A_end = 0.007
             )
 
 
             delay(self.red_mot_compression_time*ms)
 
-
+    
 
             delay(self.single_frequency_time*ms)
-
 
 
             self.seperate_probe(
@@ -524,19 +555,13 @@ class sequence_main(EnvExperiment):
                 probe_frequency= 205 * MHz
             )
 
+
  
 
             self.red_mot_aom.sw.off()
 
 
 
-
-            # self.clock_spectroscopy(
-            #     aom_frequency = 0*Hz,
-            #     pulse_time = 2000*ms,
-            #     B = 3.0
-
-            # )
 
 
             #          #Switch to Helmholtz
