@@ -382,41 +382,73 @@ class clock_transition_scan(EnvExperiment):
 
 
         gs = samples_ch0[0:600]
-        es = samples_ch0[600:1300]
-        bg = samples_ch0[1300:2000]
+        es = samples_ch0[700:1300]
+        bg = samples_ch0[1300:1900]
 
-        gs_max = gs[0]
-        es_max = es[0]
-        bg_max = bg[0]
+        # gs_max = gs[0]
+        # es_max = es[0]
+        # bg_max = bg[0]
 
         # Loop through the rest of the list
+        # with parallel:
+        #     for num in gs[1:]:
+        #         if num > gs_max:
+        #             gs_max = num
 
-        with parallel:
-            for num in gs[1:]:
-                if num > gs_max:
-                    gs_max = num
+        #     for num in es[1:]:
+        #         if num > es_max:
+        #             es_max = num
 
-            for num in es[1:]:
-                if num > es_max:
-                    es_max = num
-
-            for num in bg[1:]:
-                if num > bg_max:
-                    bg_max = num
+        #     for num in bg[1:]:
+        #         if num > bg_max:
+        #             bg_max = num
         
 
-        if es_max < bg_max:
-            es_max = bg_max
+        # if es_max < bg_max:
+        #     es_max = bg_max
 
-        numerator = es_max - bg_max
-        denominator = (gs_max - bg_max) + (es_max - bg_max)
+        # numerator = es_max - bg_max
+        # denominator = (gs_max - bg_max) + (es_max - bg_max)
 
-        if denominator != 0:
+        # if denominator != 0:
+        #     excitation_fraction = numerator / denominator
+        # else:
+        #     excitation_fraction = float(0) # or 0.5 or some fallback value depending on experiment
+        # self.gs_list[j] = float(gs_max)
+        # self.es_list[j] = float(es_max)
+        # self.excitation_fraction_list[j] = float(excitation_fraction)
+
+
+        gs_counts = 0.0
+        es_counts = 0.0
+        bg_counts = 0.0
+
+        measurement_time = 600.0 * sample_period     #set to 600 as each slice size is 600 samples at the moment,
+                                                     # we should trim this tighter to the peaks to avoid added noise
+
+        for i in gs[1:]:
+            gs_counts = gs_counts + gs[i]        
+            es_counts = es_counts + es[i]
+            bg_counts = bg_counts + bg[i]
+     
+
+        gs_measurement = gs_counts * measurement_time         #integrates over the slice time to get the total photon counts
+        es_measurement = es_counts * measurement_time
+        bg_measurement = bg_counts * measurement_time 
+                
+        #if we want the PMT to determine atom no, we will probably want photon counts,
+        # will need expected collection efficiency of the telescope,Quantum efficiency etc, maybe use the camera atom no calculation to get this
+
+
+        numerator = es_measurement - bg_measurement
+        denominator = (gs_measurement - bg_measurement) + (es_measurement - bg_measurement)
+
+        if denominator != 0.0:
             excitation_fraction = numerator / denominator
         else:
             excitation_fraction = float(0) # or 0.5 or some fallback value depending on experiment
-        self.gs_list[j] = float(gs_max)
-        self.es_list[j] = float(es_max)
+        self.gs_list[j] = float(gs_measurement)
+        self.es_list[j] = float(es_measurement)
         self.excitation_fraction_list[j] = float(excitation_fraction)
         
         # # ef.append(self.excitation_fraction_list)
